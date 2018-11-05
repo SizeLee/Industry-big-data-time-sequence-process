@@ -8,43 +8,102 @@ import numpy as np
 # 目前看来，先以分三类为基础，添加3类正常标签，将夹杂于三类中的异类作为异常类。
 # 需要统计一类的分布范围，二类的分布范围，三类的分布范围，确定异常类数据。
 class ClusterSetLabel:
-    def __init__(self, features, class_num = 2, file_str = './data/data_with_label.npz'):
+    def __init__(self, features):
         self.features = features
-        self.class_num = class_num
-        self.file_str = file_str
         self.label = None
         self.sample_num = self.features.shape[0]
         return
 
-    def clustering(self, clustering_way='kmeans', max_rounds=10):
-        k_clusters = []
-        judge = None
-        if clustering_way == 'kmeans':
-            k_clusters, judge = self._k_means(max_rounds)
-
-        count = 0
-        for cluster in k_clusters:
-            clcount = np.sum(cluster[1]*1)
-            print(clcount)
-            # print(cluster[0])
-            print(cluster[1])
-            print(np.sum(cluster[1][count:count+clcount]*1))
-            for i in range(count, count+clcount):
-                if not cluster[1][i]:
-                    print(i, end=' ')
-            print()
-            print()
-            count += clcount
-
-        print(judge)
+    def reset(self, features):
+        self.features = features
+        self.label = None
+        self.sample_num = self.features.shape[0]
         return
 
-    def _k_means(self, max_rounds):
-        self.label = np.zeros((self.sample_num, 1))
-        init_scale = self.sample_num//self.class_num
+    def clustering_and_save_in_file(self, clustering_way='kmeans', max_rounds=10, class_num=3, file_str = './data/data_with_label.npz'):
+        k_clusters, judge, whole_label = self.clustering(clustering_way, max_rounds, class_num)
+        with open('./data/label_temp.txt', 'w+') as f:
+            f.write(whole_label.tolist().__str__())
+
+        whole_label = self._set_class_label(k_clusters, whole_label)
+        whole_label = whole_label.reshape((-1, 1))
+        print(self.features.shape)
+        print(whole_label.shape)
+        np.savez(file_str, features=self.features, labels=whole_label)
+
+        with open('./data/label_dealed_temp.txt', 'w+') as f:
+            f.write(whole_label.tolist().__str__())
+
+        return
+
+    def __find_max_in_dict(self, dic):
+        max = 0
+        max_class = None
+        for each in dic:
+            if dic[each]>max:
+                max = dic[each]
+                max_class = each
+        return max_class
+
+    def _set_class_label(self, k_clusters, whole_label):
+        class_num = len(k_clusters)
+        anormaly_label = class_num
+        window = 61
+        label_dic = {}
+        for i in range(class_num):
+            label_dic[i] = 0
+
+        for i in range(window):
+            label_dic[whole_label[i]] += 1
+        label_dic[anormaly_label] = 0
+
+        cur_label = 0
+        i = 0
+        while(True):
+            cur_label = self.__find_max_in_dict(label_dic)
+            if whole_label[i+window//2] != cur_label:
+                whole_label[i+window//2] = anormaly_label
+            i += 1
+            if i >= len(whole_label)-window:
+                break
+            if whole_label[i-1] != whole_label[i+window-1]:
+                label_dic[whole_label[i-1]] -= 1
+                label_dic[whole_label[i+window-1]] += 1
+
+        return whole_label
+
+
+    def clustering(self, clustering_way='kmeans', max_rounds=10, class_num=2):
         k_clusters = []
         judge = None
-        for i in range(self.class_num):
+        whole_label = None
+        if clustering_way == 'kmeans':
+            k_clusters, judge, whole_label = self._k_means(max_rounds, class_num)
+
+        # count = 0
+        # for cluster in k_clusters:
+        #     clcount = np.sum(cluster[1]*1)
+        #     print(clcount)
+        #     # print(cluster[0])
+        #     print(cluster[1])
+        #     print(np.sum(cluster[1][count:count+clcount]*1))
+        #     # for i in range(count, count+clcount):
+        #     #     if not cluster[1][i]:
+        #     #         print(i, end=' ')
+        #     # print()
+        #     print()
+        #     count += clcount
+
+        print('judge:', judge)
+        # print(whole_label)
+        return k_clusters, judge, whole_label
+
+    def _k_means(self, max_rounds, class_num=2):
+        self.label = np.zeros((self.sample_num, 1))
+        init_scale = self.sample_num//class_num
+        k_clusters = []
+        judge = None
+        for i in range(class_num):
             self.label[i*init_scale:(i+1)*init_scale, :] = i
             cluster_index = [i for i in range(i*init_scale, (i+1)*init_scale)]
             cluster_center = np.mean(features[cluster_index, :], axis=0)
@@ -55,13 +114,13 @@ class ClusterSetLabel:
             print('round:', k_m_iter)
             little_change_flag = True
             distance = []
-            for i in range(self.class_num):
+            for i in range(class_num):
                 k_clusters[i][1] = []
                 distance.append(np.linalg.norm(self.features - k_clusters[i][0], ord=2, axis=1))
             # print(distance)
             belong2 = np.argmin(distance, axis=0)
             # print(belong2)
-            for i in range(self.class_num):
+            for i in range(class_num):
                 new_index = belong2 == i
                 new_center = np.mean(self.features[new_index, :], axis=0)
                 # print(k_clusters[i][0])
@@ -75,32 +134,37 @@ class ClusterSetLabel:
             if little_change_flag:
                 break
 
-            incluster_distance = []
-            for i in range(self.class_num):
-                # incluster_distance.append(np.mean(distance[i][k_clusters[i][1]]))
-                incluster_distance.append(np.percentile(distance[i][k_clusters[i][1]], 90))
-            incluster_distance = np.array(incluster_distance)
+        incluster_distance = []
+        for i in range(class_num):
+            # incluster_distance.append(np.mean(distance[i][k_clusters[i][1]]))
+            incluster_distance.append(np.percentile(distance[i][k_clusters[i][1]], 90))
+        incluster_distance = np.array(incluster_distance)
 
-            btclusters_distance = [[np.inf for i in range(self.class_num)] for j in range(self.class_num)]
-            for i in range(self.class_num-1):
-                for j in range(i+1, self.class_num):
-                    temp = np.linalg.norm(k_clusters[i][0] - k_clusters[j][0])
-                    btclusters_distance[i][j] = temp
-                    btclusters_distance[j][i] = temp
-            btclusters_distance = np.array(btclusters_distance)
+        btclusters_distance = [[np.inf for i in range(class_num)] for j in range(class_num)]
+        for i in range(class_num-1):
+            for j in range(i+1, class_num):
+                temp = np.linalg.norm(k_clusters[i][0] - k_clusters[j][0])
+                btclusters_distance[i][j] = temp
+                btclusters_distance[j][i] = temp
+        btclusters_distance = np.array(btclusters_distance)
 
-            mini_bt_distance = np.min(btclusters_distance, axis=0)
-            judge = incluster_distance/mini_bt_distance
+        mini_bt_distance = np.min(btclusters_distance, axis=0)
+        judge = incluster_distance/mini_bt_distance
 
-        return k_clusters, judge
+
+        whole_label = np.zeros(self.sample_num)
+        for i in range(class_num):
+            whole_label += k_clusters[i][1] * i
+
+        return k_clusters, judge, whole_label
 
 if __name__ == '__main__':
     features = np.load('./data/features.npz')['arr_0']
     # print(features)
     # print(features.shape)
     # features = np.array([[1, 2, 3], [2, 3, 4], [3, 4, 5]])
-    classes_num = 3
-    clu = ClusterSetLabel(features, classes_num)
-    clu.clustering(max_rounds=100)
+    class_num = 3
+    clu = ClusterSetLabel(features)
+    clu.clustering_and_save_in_file(max_rounds=100, class_num=class_num, file_str='./data/data_with_label.npz')
 
 
