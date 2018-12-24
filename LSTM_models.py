@@ -58,13 +58,15 @@ class FixedLengthRNN:
         return
 
     def save_model(self, save_dir, global_step=None):
-        saver = tf.train.Saver()
-        saver.save(sess=self.sess, save_path=save_dir+'/model.ckpt', global_step=global_step)
+        with self.graph.as_default():
+            saver = tf.train.Saver()
+            saver.save(sess=self.sess, save_path=save_dir+'/model.ckpt', global_step=global_step)
         return
 
     def load_model(self, load_dir):
-        saver = tf.train.Saver()
-        saver.restore(self.sess, load_dir+'/model.ckpt')
+        with self.graph.as_default():
+            saver = tf.train.Saver()
+            saver.restore(self.sess, load_dir+'/model.ckpt')
         return
 
     def _rnn_layer(self, layer_id, layer_input):
@@ -135,8 +137,8 @@ class FixedLengthRNN:
         print('accuracy on training set: %f' % accuracy)
         return
 
-    def test(self, data, label, test_set_sample_ids=None, data_set_name='test set'):
-        accuracy = self._cal_accuracy(data, label, len(test_set_sample_ids), test_set_sample_ids)
+    def test(self, data, label, test_set_sample_ids=None, batch_size=1024, data_set_name='test set'):
+        accuracy = self._cal_accuracy(data, label, batch_size, test_set_sample_ids)
         print('accuracy on %s: %f' % (data_set_name, accuracy))
         return
 
@@ -167,7 +169,7 @@ class FixedLengthRNN:
             batch_label = np.zeros((batch_size,  self.class_num))
             for i, each_sample in enumerate(batch):
                 batch_data[i, :, :] = data[each_sample:(each_sample+length), :]
-                batch_label[i, int(labels[each_sample, 0])] = 1
+                batch_label[i, int(labels[each_sample+length - 1, 0])] = 1
             yield batch_data, batch_label
 
         return 'one epoch done'

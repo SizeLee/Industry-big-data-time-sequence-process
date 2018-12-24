@@ -13,10 +13,12 @@ if __name__ == '__main__':
     sample_ids = [i for i in range(sample_num)]
     training_sample_ids = random.sample(sample_ids, int(0.7*sample_num))
     test_sample_ids = list(set(sample_ids) - set(training_sample_ids))
+    # training_sample_ids = [i for i in range(1000)]
+    # test_sample_ids = [i for i in range(1000, 2000)]
     lstm = LSTM_models.FixedLengthRNN(sequence_fix_length, data['features'].shape[1], class_num=4, cell_type='lstm')
-    lstm.train(data['features'], data['labels'], 1, 32, training_sample_ids, True)
+    lstm.train(data['features'], data['labels'], 1, 1024, training_sample_ids, True)
     lstm.test(data['features'], data['labels'], test_sample_ids)
-    lstm.save_model('./ini_test')
+    lstm.save_model('./model/ini_test')
 
 
 

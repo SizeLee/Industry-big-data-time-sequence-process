@@ -9,6 +9,7 @@
 *.csv
 *.json
 /data/
+/model/
 *.npz
 *.txt
 *.zip
