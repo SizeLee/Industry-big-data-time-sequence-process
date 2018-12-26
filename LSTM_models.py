@@ -4,7 +4,7 @@ import json
 import random
 
 class FixedLengthRNN:
-    def __init__(self, fixed_length, input_size, class_num, cell_type='lstm',
+    def __init__(self, fixed_length, input_size, class_num, cell_type='lstm', foresight_steps=0,
                  network_hyperparameters='./data/network_hyperparameters.json'):
         self.fixed_length = fixed_length
         self.graph = tf.Graph()
@@ -14,6 +14,7 @@ class FixedLengthRNN:
         self.dtype = tf.float32
         self.class_num = class_num
         # self.parameters = []
+        self.foresight_steps = foresight_steps
         with open(network_hyperparameters, 'r') as f:
             self.network_hyperparameter = json.load(f)
         with self.graph.as_default():
@@ -121,9 +122,16 @@ class FixedLengthRNN:
                 # illegal input string will be treat as linear
         return out, linear_out
 
-    def train(self, data, labels, epoches, batch_size, train_set_sample_ids, reset_flag=False):
+    def train(self, data, labels, epoches, batch_size, train_set_sample_ids, foresight_steps=None, reset_flag=False):
         if reset_flag:
             self.sess.run(self.initializer)
+        if foresight_steps is not None:
+            try:
+                self.foresight_steps = int(foresight_steps)
+            except:
+                print('Wrong format of value of variable foresight_steps')
+                pass
+
         for i in range(epoches):
             print('epoch%d:' % i)
             data_set = self._data_generator(data, labels, self.fixed_length, batch_size, train_set_sample_ids)
@@ -155,9 +163,9 @@ class FixedLengthRNN:
 
     def _data_generator(self, data, labels, length, batch_size, sample_ids=None):
         if sample_ids is None:
-            sample_ids = set([i for i in range(data.shape[0]-length+1)])
+            sample_ids = set([i for i in range(data.shape[0]-length+1-self.foresight_steps)])
         else:
-            sample_ids = set(filter(lambda x: x < (data.shape[0]-length+1), sample_ids))
+            sample_ids = set(filter(lambda x: x < (data.shape[0]-length+1-self.foresight_steps), sample_ids))
 
         while len(sample_ids) > 0:
             if batch_size >= len(sample_ids):
@@ -169,7 +177,7 @@ class FixedLengthRNN:
             batch_label = np.zeros((batch_size,  self.class_num))
             for i, each_sample in enumerate(batch):
                 batch_data[i, :, :] = data[each_sample:(each_sample+length), :]
-                batch_label[i, int(labels[each_sample+length - 1, 0])] = 1
+                batch_label[i, int(labels[each_sample + length - 1 + self.foresight_steps, 0])] = 1
             yield batch_data, batch_label
 
         return 'one epoch done'
