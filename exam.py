@@ -1,5 +1,5 @@
 import numpy as np
-import LSTM_models
+import RNN_models
 import configparser
 import json
 
@@ -28,8 +28,8 @@ if __name__ == '__main__':
     # training_sample_ids = list(map(int, data_set_ids['training_set']))
     # test_sample_ids = list(map(int, data_set_ids['test_set']))
 
-    lstm = LSTM_models.FixedLengthRNN(sequence_fix_length, data['features'].shape[1],
-                                      class_num=class_num, cell_type='lstm')
+    lstm = RNN_models.FixedLengthRNN(sequence_fix_length, data['features'].shape[1],
+                                     class_num=class_num, cell_type='lstm')
     lstm.train(data['features'], data['labels'], 1, 1024, training_sample_ids,
                foresight_steps=foresight_steps, reset_flag=True)
     lstm.test(data['features'], data['labels'], test_sample_ids)
