@@ -1,5 +1,5 @@
 import numpy as np
-import RNN_models
+import RNN_models, CNN_models
 import configparser
 import json
 
@@ -28,12 +28,18 @@ if __name__ == '__main__':
     # training_sample_ids = list(map(int, data_set_ids['training_set']))
     # test_sample_ids = list(map(int, data_set_ids['test_set']))
 
-    lstm = RNN_models.FixedLengthRNN(sequence_fix_length, data['features'].shape[1],
-                                     class_num=class_num, cell_type='lstm')
-    lstm.train(data['features'], data['labels'], 1, 1024, training_sample_ids,
-               foresight_steps=foresight_steps, reset_flag=True)
-    lstm.test(data['features'], data['labels'], test_sample_ids)
-    lstm.save_model('./model/ini_test')
+    # rnn exams
+    # lstm = RNN_models.FixedLengthRNN(sequence_fix_length, data['features'].shape[1],
+    #                                  class_num=class_num, cell_type='lstm')
+    # lstm.train(data['features'], data['labels'], 1, 1024, training_sample_ids,
+    #            foresight_steps=foresight_steps, reset_flag=True)
+    # lstm.test(data['features'], data['labels'], test_sample_ids)
+    # lstm.save_model('./model/ini_test')
 
+    # cnn exams
+    cnn = CNN_models.ConvSequence2One(sequence_fix_length, data['features'].shape[1],
+                                     class_num=class_num)
+    cnn.train(data['features'], data['labels'], 1, 1024, training_sample_ids)
+    cnn.test(data['features'], data['labels'], test_sample_ids)
 
 
