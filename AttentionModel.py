@@ -27,6 +27,25 @@ class OnlyAttention:
         return
 
     def _build_network(self):
+        with tf.name_scope('input'):
+            with tf.variable_scope('input'):
+                self.input = tf.placeholder(shape=[None, self.fixed_length, self.input_size],
+                                            dtype=self.dtype, name='input_sequence')
+                # shape = [sample, sequence_length, feature_num]
+
+            layer_input = self.input
+
+            position_embedding = self._position_embedding(self.fixed_length, self.input_size, 'encoder_1')
+            layer_input = self.input + position_embedding
+
+            with tf.name_scope('encoder_layers'):
+                encoder_num = self.network_hyperparameter['encoder_num']
+                for i in range(encoder_num):
+                    layer_out = self._attention_encoder_layer(layer_input, 'encoder_%d' % (i+1),
+                                                        self.network_hyperparameter['encoders']['encoder_%d' % (i+1)])
+                    layer_input = layer_out
+
+
 
         return
 
@@ -42,17 +61,92 @@ class OnlyAttention:
             saver.restore(self.sess, load_dir+'/model.ckpt')
         return
 
-    def _feature_attention(self, q, k, v, layer_name):
-        # todo similar to position attention, do it before position embedding
-        return
+    def _attention_encoder_layer(self, layer_input, layer_name, net_structure):
+        # layer_input[sample, fixed_length, features]
+        with tf.name_scope(layer_name):
+            attention_type = net_structure["attention_type"]
+            if attention_type.lower() == 'mha':  # mha for multi-head attention, fa for feature attention
+                mha = self._multi_head_attention(layer_input, layer_input, layer_input,
+                                                 'multi-head_attention', net_structure['attention_layer'])
+                if net_structure['attention_layer']['residual_flag'].lower() == 'true':
+                    layer_out = mha + layer_input
+                else:
+                    layer_out = mha
 
-    def _multi_head_attention(self, q, k, v, layer_name):
-        q = tf.reshape(q, [-1, q.shape[-1]], name='reshape_q')
-        k = tf.reshape(k, [-1, k.shape[-1]], name='reshape_k')
-        v = tf.reshape(v, [-1, v.shape[-1]], name='reshape_v')
-        head_num = self.network_hyperparameter[layer_name]['head_num']
-        head_size = self.network_hyperparameter[layer_name]['head_size']
+            elif attention_type.lower() == 'fa':  # mha for multi-head attention, fa for feature attention
+                fa = self._feature_attention(layer_input, layer_input, layer_input,
+                                             'feature_attention', net_structure['attention_layer'])
+                if net_structure['attention_layer']['residual_flag'].lower() == 'true':
+                    layer_out = fa + layer_input
+                else:
+                    layer_out = fa
+            else:  # illegal attention type means no attention
+                layer_out = layer_input
+
+            # todo use position_wise or dense net, if position_wise in netstructure
+            layer_out = self._position_wise_dense_layer(layer_out, 'position_wise_net',
+                                                        net_structure['position_wise_net'])
+
+            return layer_out
+
+    def _feature_attention(self, q, k, v, layer_name, net_structure):
+        # similar to position attention, do it before position embedding
+        head_num = net_structure['head_num']
+        head_size = net_structure['head_size']
         with tf.variable_scope(layer_name):
+            q = tf.reshape(q, [-1, q.shape[-1]], name='reshape_q')
+            k = tf.reshape(k, [-1, k.shape[-1]], name='reshape_k')
+            v = tf.reshape(v, [-1, v.shape[-1]], name='reshape_v')
+            linear_project_qw = tf.get_variable('linear_project_q', shape=[q.shape[-1], head_num*head_size],
+                                               dtype=self.dtype,
+                                               initializer=tf.contrib.layers.xavier_initializer())
+            linear_project_kw = tf.get_variable('linear_project_k', shape=[k.shape[-1], head_num*head_size],
+                                               dtype=self.dtype,
+                                               initializer=tf.contrib.layers.xavier_initializer())
+            linear_project_vw = tf.get_variable('linear_project_v', shape=[v.shape[-1], head_num * head_size],
+                                               dtype=self.dtype,
+                                               initializer=tf.contrib.layers.xavier_initializer())
+
+            with tf.name_scope('linear_project'):
+                q = tf.matmul(q, linear_project_qw)
+                k = tf.matmul(k, linear_project_kw)
+                v = tf.matmul(v, linear_project_vw)
+
+                q = tf.reshape(q, [-1, self.fixed_length, q.shape[-1]])
+                k = tf.reshape(k, [-1, self.fixed_length, k.shape[-1]])
+                v = tf.reshape(v, [-1, self.fixed_length, v.shape[-1]])
+
+            with tf.name_scope('scaled_dot_product_attention'):
+                new_vs = []
+                for i in range(head_num):
+                    temp_q = q[:, :, i*head_size: (i+1)*head_size]
+                    temp_k = k[:, :, i*head_size: (i+1)*head_size]
+                    attention = tf.matmul(tf.transpose(temp_q, [0, 2, 1]), temp_k)/tf.sqrt(head_size)
+                    attention = tf.nn.softmax(attention, axis=1, name='attention%d' % i)
+                    temp_v = v[:, :, i*head_size: (i+1)*head_size]
+                    attention_v = tf.matmul(temp_v, attention)
+                    new_vs.append(attention_v)
+
+            with tf.name_scope('concat_linear_project'):
+                concat = tf.concat(new_vs, axis=2)
+                output_size = net_structure['output_size']  # d_model
+                w = tf.get_variable('linear_project_concat', shape=[concat.shape[-1], output_size],
+                                               dtype=self.dtype,
+                                               initializer=tf.contrib.layers.xavier_initializer())
+                output = tf.reshape(tf.matmul(tf.reshape(concat,
+                                                         [-1, concat.shape[-1]]),
+                                              w),
+                                    [-1, self.fixed_length, output_size])
+
+        return output
+
+    def _multi_head_attention(self, q, k, v, layer_name, net_structure):
+        head_num = net_structure['head_num']
+        head_size = net_structure['head_size']
+        with tf.variable_scope(layer_name):
+            q = tf.reshape(q, [-1, q.shape[-1]], name='reshape_q')
+            k = tf.reshape(k, [-1, k.shape[-1]], name='reshape_k')
+            v = tf.reshape(v, [-1, v.shape[-1]], name='reshape_v')
             linear_project_qw = tf.get_variable('linear_project_q', shape=[q.shape[-1], head_num*head_size],
                                                dtype=self.dtype,
                                                initializer=tf.contrib.layers.xavier_initializer())
@@ -85,7 +179,7 @@ class OnlyAttention:
 
             with tf.name_scope('concat_linear_project'):
                 concat = tf.concat(new_vs, axis=2)
-                output_size = self.network_hyperparameter[layer_name]['output_size']  # d_model
+                output_size = net_structure['output_size']  # d_model
                 w = tf.get_variable('linear_project_concat', shape=[concat.shape[-1], output_size],
                                                dtype=self.dtype,
                                                initializer=tf.contrib.layers.xavier_initializer())
@@ -94,9 +188,132 @@ class OnlyAttention:
                                               w),
                                     [-1, self.fixed_length, output_size])
 
-        return  output
+        return output  # output shape [sample, fixed_length, output_size]
 
+    def _summarize_attention(self, k, v, layer_name, net_structure):
+        head_num = net_structure['head_num']
+        head_size = net_structure['head_size']
+        with tf.variable_scope(layer_name):
+            q = tf.get_variable('q', shape=[1, 1, k.shape[-1]], dtype=self.dtype,
+                                initializer=tf.ones_initializer())
+            k = tf.reshape(k, [-1, k.shape[-1]], name='reshape_k')
+            v = tf.reshape(v, [-1, v.shape[-1]], name='reshape_v')
 
+            linear_project_qw = tf.get_variable('linear_project_q', shape=[q.shape[-1], head_num * head_size],
+                                                dtype=self.dtype,
+                                                initializer=tf.contrib.layers.xavier_initializer())
+            linear_project_kw = tf.get_variable('linear_project_k', shape=[k.shape[-1], head_num * head_size],
+                                                dtype=self.dtype,
+                                                initializer=tf.contrib.layers.xavier_initializer())
+            linear_project_vw = tf.get_variable('linear_project_v', shape=[v.shape[-1], head_num * head_size],
+                                                dtype=self.dtype,
+                                                initializer=tf.contrib.layers.xavier_initializer())
+
+            with tf.name_scope('linear_project'):
+                q = tf.matmul(q, linear_project_qw)
+                k = tf.matmul(k, linear_project_kw)
+                v = tf.matmul(v, linear_project_vw)
+                q = tf.tile(q, [tf.shape(k)[0], 1, 1])
+                k = tf.reshape(k, [-1, self.fixed_length, k.shape[-1]])
+                v = tf.reshape(v, [-1, self.fixed_length, v.shape[-1]])
+
+            with tf.name_scope('summarizer_attention'):
+                new_vs = []
+                for i in range(head_num):
+                    temp_q = q[:, :, i*head_size: (i+1)*head_size]
+                    temp_k = k[:, :, i*head_size: (i+1)*head_size]
+                    attention = tf.matmul(temp_q, tf.transpose(temp_k, [0, 2, 1]))/tf.sqrt(head_size)
+                    attention = tf.nn.softmax(attention, axis=2, name='attention%d' % i)
+                    temp_v = v[:, :, i*head_size: (i+1)*head_size]
+                    attention_v = tf.matmul(attention, temp_v)
+                    new_vs.append(attention_v)
+
+            with tf.name_scope('concat_linear_project'):
+                concat = tf.concat(new_vs, axis=2)
+                output_size = net_structure['output_size']  # d_model
+                w = tf.get_variable('linear_project_concat', shape=[concat.shape[-1], output_size],
+                                               dtype=self.dtype,
+                                               initializer=tf.contrib.layers.xavier_initializer())
+                output = tf.reshape(tf.matmul(tf.reshape(concat,
+                                                         [-1, concat.shape[-1]]),
+                                              w),
+                                    [-1, 1, output_size])
+
+        return output  # output shape [sample, 1, output_size]
+
+    def _position_wise_dense_layer(self, layer_input, layer_name, network_structure):
+        w1_size = network_structure['w1_size']
+        w2_size = network_structure['w2_size']
+        with tf.variable_scope(layer_name):
+            w1 = tf.get_variable('weight1', shape=[layer_input.shape[-1], w1_size],
+                                               dtype=self.dtype,
+                                               initializer=tf.contrib.layers.xavier_initializer())
+            b = tf.Variable(initial_value=tf.constant(0, shape=[w1_size], dtype=self.dtype), name='bias1')
+            output = tf.nn.relu(tf.nn.bias_add(tf.matmul(tf.reshape(layer_input, [-1, layer_input.shape[-1]]), w1), b))
+
+            w2 = tf.get_variable('weight2', shape=[w1_size, w2_size],
+                                               dtype=self.dtype,
+                                               initializer=tf.contrib.layers.xavier_initializer())
+            b = tf.Variable(initial_value=tf.constant(0, shape=[w2_size], dtype=self.dtype), name='bias2')
+            output = tf.nn.relu(tf.nn.bias_add(tf.matmul(output, w2), b))
+
+            output = tf.reshape(output, [-1, self.fixed_length, w2_size])
+
+            if network_structure['residual_flag'].lower() == 'true':
+                output = output + layer_input
+
+        return output
+
+    def _dense_layer(self, layer_name, layer_input, layer_out_size, activation_func='relu',
+                     reuse_flag=False, reuse_w=None, reuse_b=None):
+        with tf.name_scope(layer_name):
+            with tf.variable_scope(layer_name+'_variables'):
+                # w = tf.Variable(initial_value=tf.truncated_normal([layer_input.shape[1], layer_out_size], stddev=1e-1,
+                #                                                   dtype=self.dtype), name='weight')
+                if reuse_flag and reuse_w is not None and reuse_b is not None:
+                    w = reuse_w
+                    b = reuse_b
+                else:
+                    w = tf.get_variable('weight', shape=[layer_input.shape[1], layer_out_size], dtype=self.dtype,
+                                    initializer=tf.contrib.layers.xavier_initializer())
+                    b = tf.Variable(initial_value=tf.constant(0, shape=[layer_out_size], dtype=self.dtype), name='bias')
+                linear_out = tf.nn.bias_add(tf.matmul(layer_input, w), b)
+                out = linear_out
+                if activation_func.lower() == 'relu':
+                    out = tf.nn.relu(out)
+                elif activation_func.lower() == 'sigmoid':
+                    out = tf.nn.sigmoid(out)
+                elif activation_func.lower() == 'tanh':
+                    out = tf.nn.tanh(out)
+                elif activation_func.lower() == 'softmax':
+                    out = tf.nn.softmax(out)
+                elif activation_func.lower() == 'linear':
+                    out = out
+                # illegal input string will be treat as linear
+        return out, linear_out
+
+    def _position_embedding(self, length, channels, layer_name, max_time_scale=1.0e4, min_time_scale=1.0, start_index=0):
+        with tf.name_scope('%s position_embedding' % layer_name):
+            position = tf.cast(tf.range(length) + start_index, dtype=self.dtype)
+            dimention = tf.cast(tf.range(channels // 2), dtype=self.dtype)
+
+            signal = tf.expand_dims(position, 1) / tf.pow(float(max_time_scale) / float(min_time_scale),
+                                                          2 * tf.expand_dims(dimention, 0) / float(channels))
+
+            sin_signal = tf.sin(signal)
+            cos_signal = tf.cos(signal)
+
+            signal = tf.reshape(tf.concat([tf.reshape(sin_signal, [-1, 1]), tf.reshape(cos_signal, [-1, 1])], axis=1),
+                                [-1, (channels // 2) * 2])
+
+            if channels % 2 == 1:
+                last_embedding = tf.expand_dims(position, 1) \
+                                 / tf.pow(float(max_time_scale) / float(min_time_scale),
+                                       2 * tf.constant(channels // 2, shape=[1, 1], dtype=self.dtype) / float(channels))
+                signal = tf.concat([signal, tf.sin(last_embedding)], axis=-1)
+
+            signal = tf.reshape(signal, [1, length, channels])
+        return signal
 
     def _data_generator(self, data, labels, length, batch_size, sample_ids=None):
         if sample_ids is None:
