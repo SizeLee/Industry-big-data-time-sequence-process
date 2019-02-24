@@ -2,6 +2,7 @@ import numpy as np
 import RNN_models, CNN_models, AttentionModel
 import configparser
 import json
+import time
 
 if __name__ == '__main__':
     common_para = configparser.ConfigParser()
@@ -28,15 +29,15 @@ if __name__ == '__main__':
     # training_sample_ids = list(map(int, data_set_ids['training_set']))
     # test_sample_ids = list(map(int, data_set_ids['test_set']))
 
-    # rnn exams
+    # # rnn exams
     # lstm = RNN_models.FixedLengthRNN(sequence_fix_length, data['features'].shape[1],
     #                                  class_num=class_num, cell_type='lstm')
     # lstm.train(data['features'], data['labels'], 1, 1024, training_sample_ids,
     #            foresight_steps=foresight_steps, reset_flag=True)
     # lstm.test(data['features'], data['labels'], test_sample_ids)
-    # lstm.save_model('./model/ini_test')
+    # lstm.save_model('./model/rnn_model')
 
-    # cnn exams
+    # # cnn exams
     # cnn = CNN_models.ConvSequence2One(sequence_fix_length, data['features'].shape[1],
     #                                  class_num=class_num)
     # cnn.train(data['features'], data['labels'], 1, 1024, training_sample_ids)
@@ -45,9 +46,9 @@ if __name__ == '__main__':
 
     # attention net exams
     atn = AttentionModel.OnlyAttention(sequence_fix_length, data['features'].shape[1],
-                                     class_num=class_num)
+                                     class_num=class_num, network_hyperparameters='./data/attention_network_hyperparameters_v2.json')
     atn.train(data['features'], data['labels'], 1, 1024, training_sample_ids)
     atn.test(data['features'], data['labels'], test_sample_ids)
     atn.save_model('./model/atn_model')
-
+    time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
 

@@ -186,18 +186,25 @@ class OnlyAttention:
                 v = tf.reshape(v, [-1, self.fixed_length, v.shape[-1]])
 
             with tf.name_scope('scaled_dot_product_attention'):
-                new_vs = []
-                for i in range(head_num):
-                    temp_q = q[:, :, i*head_size: (i+1)*head_size]
-                    temp_k = k[:, :, i*head_size: (i+1)*head_size]
-                    attention = tf.matmul(tf.transpose(temp_q, [0, 2, 1]), temp_k)/tf.sqrt(float(head_size))
-                    attention = tf.nn.softmax(attention, axis=1, name='attention%d' % i)
-                    temp_v = v[:, :, i*head_size: (i+1)*head_size]
-                    attention_v = tf.matmul(temp_v, attention)
-                    new_vs.append(attention_v)
+                q = tf.concat(tf.split(q, head_num, axis=2), axis=0)
+                k = tf.concat(tf.split(k, head_num, axis=2), axis=0)
+                v = tf.concat(tf.split(v, head_num, axis=2), axis=0)  # [sample*head_num, fixed_length, head_size]
+                attention = tf.matmul(tf.transpose(q, [0, 2, 1]), k) / (head_size ** 0.5)
+                attention = tf.nn.softmax(attention, axis=1, name='attention')
+                attention_v = tf.matmul(v, attention)
+                # new_vs = []
+                # for i in range(head_num):
+                #     temp_q = q[:, :, i*head_size: (i+1)*head_size]
+                #     temp_k = k[:, :, i*head_size: (i+1)*head_size]
+                #     attention = tf.matmul(tf.transpose(temp_q, [0, 2, 1]), temp_k)/tf.sqrt(float(head_size))
+                #     attention = tf.nn.softmax(attention, axis=1, name='attention%d' % i)
+                #     temp_v = v[:, :, i*head_size: (i+1)*head_size]
+                #     attention_v = tf.matmul(temp_v, attention)
+                #     new_vs.append(attention_v)
 
             with tf.name_scope('concat_linear_project'):
-                concat = tf.concat(new_vs, axis=2)
+                # concat = tf.concat(new_vs, axis=2)
+                concat = tf.concat(tf.split(attention_v, head_num, axis=0), axis=2)  # [sample, fixed_length, head_num*head_size]
                 output_size = net_structure['output_size']  # d_model
                 w = tf.get_variable('linear_project_concat', shape=[concat.shape[-1], output_size],
                                                dtype=self.dtype,
@@ -236,18 +243,25 @@ class OnlyAttention:
                 v = tf.reshape(v, [-1, self.fixed_length, v.shape[-1]])
 
             with tf.name_scope('scaled_dot_product_attention'):
-                new_vs = []
-                for i in range(head_num):
-                    temp_q = q[:, :, i*head_size: (i+1)*head_size]
-                    temp_k = k[:, :, i*head_size: (i+1)*head_size]
-                    attention = tf.matmul(temp_q, tf.transpose(temp_k, [0, 2, 1]))/tf.sqrt(float(head_size))
-                    attention = tf.nn.softmax(attention, axis=2, name='attention%d' % i)
-                    temp_v = v[:, :, i*head_size: (i+1)*head_size]
-                    attention_v = tf.matmul(attention, temp_v)
-                    new_vs.append(attention_v)
+                q = tf.concat(tf.split(q, head_num, axis=2), axis=0)
+                k = tf.concat(tf.split(k, head_num, axis=2), axis=0)
+                v = tf.concat(tf.split(v, head_num, axis=2), axis=0)  # [sample*head_num, fixed_length, head_size]
+                attention = tf.matmul(q, tf.transpose(k, [0, 2, 1]))/(head_size ** 0.5)
+                attention = tf.nn.softmax(attention, axis=2, name='attention')
+                attention_v = tf.matmul(attention, v)
+                # new_vs = []
+                # for i in range(head_num):
+                #     temp_q = q[:, :, i*head_size: (i+1)*head_size]
+                #     temp_k = k[:, :, i*head_size: (i+1)*head_size]
+                #     attention = tf.matmul(temp_q, tf.transpose(temp_k, [0, 2, 1]))/tf.sqrt(float(head_size))
+                #     attention = tf.nn.softmax(attention, axis=2, name='attention%d' % i)
+                #     temp_v = v[:, :, i*head_size: (i+1)*head_size]
+                #     attention_v = tf.matmul(attention, temp_v)
+                #     new_vs.append(attention_v)
 
             with tf.name_scope('concat_linear_project'):
-                concat = tf.concat(new_vs, axis=2)
+                # concat = tf.concat(new_vs, axis=2)
+                concat = tf.concat(tf.split(attention_v, head_num, axis=0), axis=2)  # [sample, fixed_length, head_num*head_size]
                 output_size = net_structure['output_size']  # d_model
                 w = tf.get_variable('linear_project_concat', shape=[concat.shape[-1], output_size],
                                                dtype=self.dtype,
@@ -283,23 +297,30 @@ class OnlyAttention:
                 q = tf.matmul(q, linear_project_qw)
                 k = tf.matmul(k, linear_project_kw)
                 v = tf.matmul(v, linear_project_vw)
-                q = tf.tile(tf.expand_dims(q, axis=0), [sample_num, 1, 1])
+                q = tf.tile(tf.expand_dims(q, axis=0), [sample_num, 1, 1])  # [sample, 1, head_size*head_num]
                 k = tf.reshape(k, [-1, self.fixed_length, k.shape[-1]])
                 v = tf.reshape(v, [-1, self.fixed_length, v.shape[-1]])
 
             with tf.name_scope('summarizer_attention'):
-                new_vs = []
-                for i in range(head_num):
-                    temp_q = q[:, :, i*head_size: (i+1)*head_size]
-                    temp_k = k[:, :, i*head_size: (i+1)*head_size]
-                    attention = tf.matmul(temp_q, tf.transpose(temp_k, [0, 2, 1]))/tf.sqrt(float(head_size))
-                    attention = tf.nn.softmax(attention, axis=2, name='attention%d' % i)
-                    temp_v = v[:, :, i*head_size: (i+1)*head_size]
-                    attention_v = tf.matmul(attention, temp_v)
-                    new_vs.append(attention_v)
+                q = tf.concat(tf.split(q, head_num, axis=2), axis=0)  # [sample*head_num, 1, head_size]
+                k = tf.concat(tf.split(k, head_num, axis=2), axis=0)  # [sample*head_num, fixed_length, head_size]
+                v = tf.concat(tf.split(v, head_num, axis=2), axis=0)  # [sample*head_num, fixed_length, head_size]
+                attention = tf.matmul(q, tf.transpose(k, [0, 2, 1])) / (head_size ** 0.5)
+                attention = tf.nn.softmax(attention, axis=2, name='attention')
+                attention_v = tf.matmul(attention, v)  # [sample*head_num, 1, head_size]
+                # new_vs = []
+                # for i in range(head_num):
+                #     temp_q = q[:, :, i*head_size: (i+1)*head_size]
+                #     temp_k = k[:, :, i*head_size: (i+1)*head_size]
+                #     attention = tf.matmul(temp_q, tf.transpose(temp_k, [0, 2, 1]))/tf.sqrt(float(head_size))
+                #     attention = tf.nn.softmax(attention, axis=2, name='attention%d' % i)
+                #     temp_v = v[:, :, i*head_size: (i+1)*head_size]
+                #     attention_v = tf.matmul(attention, temp_v)
+                #     new_vs.append(attention_v)
 
             with tf.name_scope('concat_linear_project'):
-                concat = tf.concat(new_vs, axis=2)
+                # concat = tf.concat(new_vs, axis=2)
+                concat = tf.concat(tf.split(attention_v, head_num, axis=0), axis=2)  # [sample, 1, head_num*head_size]
                 output_size = net_structure['output_size']  # d_model
                 w = tf.get_variable('linear_project_concat', shape=[concat.shape[-1], output_size],
                                                dtype=self.dtype,
