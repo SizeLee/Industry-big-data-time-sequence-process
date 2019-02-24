@@ -1,5 +1,5 @@
 import numpy as np
-import RNN_models, CNN_models
+import RNN_models, CNN_models, AttentionModel
 import configparser
 import json
 
@@ -37,9 +37,17 @@ if __name__ == '__main__':
     # lstm.save_model('./model/ini_test')
 
     # cnn exams
-    cnn = CNN_models.ConvSequence2One(sequence_fix_length, data['features'].shape[1],
+    # cnn = CNN_models.ConvSequence2One(sequence_fix_length, data['features'].shape[1],
+    #                                  class_num=class_num)
+    # cnn.train(data['features'], data['labels'], 1, 1024, training_sample_ids)
+    # cnn.test(data['features'], data['labels'], test_sample_ids)
+    # cnn.save_model('./model/cnn_model')
+
+    # attention net exams
+    atn = AttentionModel.OnlyAttention(sequence_fix_length, data['features'].shape[1],
                                      class_num=class_num)
-    cnn.train(data['features'], data['labels'], 1, 1024, training_sample_ids)
-    cnn.test(data['features'], data['labels'], test_sample_ids)
+    atn.train(data['features'], data['labels'], 1, 1024, training_sample_ids)
+    atn.test(data['features'], data['labels'], test_sample_ids)
+    atn.save_model('./model/atn_model')
 
 
