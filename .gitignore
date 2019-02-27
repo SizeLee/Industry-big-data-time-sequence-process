@@ -17,3 +17,6 @@
 # draft file for test grammer
 pydraft.py
 
+# personal script
+*.bat
+

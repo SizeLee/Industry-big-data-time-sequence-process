@@ -438,7 +438,7 @@ class OnlyAttention:
             weight = batch_label.dot(np.array([[1, 1, 1, 500]]).T)
             yield batch_data, batch_label, weight
 
-        return 'one epoch done'
+        return # 'one epoch done'
 
 if __name__ == '__main__':
     oa = OnlyAttention(30, 2, 4, 3)

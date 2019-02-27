@@ -180,4 +180,4 @@ class FixedLengthRNN:
                 batch_label[i, int(labels[each_sample + length - 1 + self.foresight_steps, 0])] = 1
             yield batch_data, batch_label
 
-        return 'one epoch done'
+        return  # 'one epoch done'

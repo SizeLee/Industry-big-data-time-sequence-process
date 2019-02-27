@@ -3,9 +3,9 @@ import numpy as np
 import json
 import random
 
-class ConvSequence2One:
+class BPNN:
     def __init__(self, fixed_length, input_size, class_num, foresight_steps=0,
-                 network_hyperparameters='./data/cnn_network_hyperparameters.json'):
+                 network_hyperparameters='./data/bpnn_network_hyperparameters.json'):
         self.graph = tf.Graph()
         self.sess = tf.Session(graph=self.graph)
         self.sequence_length = fixed_length
@@ -18,13 +18,13 @@ class ConvSequence2One:
             self.network_hyperparameter = json.load(f)
 
         with self.graph.as_default():
-            self._build_CNN()
+            self._build_NN()
             self.initializer = tf.global_variables_initializer()
             self.sess.run(self.initializer)
 
         return
 
-    def _build_CNN(self):
+    def _build_NN(self):
         with tf.variable_scope('input'):
             self.input = tf.placeholder(shape=[None, self.sequence_length, self.input_size],
                                         dtype=self.dtype, name='input_sequence')
@@ -32,12 +32,7 @@ class ConvSequence2One:
 
         layer_input = self.input
 
-        with tf.name_scope('cnn_layers'):
-            conv_layers_num = self.network_hyperparameter['cnn_layers_num']
-            for i in range(conv_layers_num):
-                layer_input = self._cnn_layer(i+1, layer_input)
-
-        with tf.name_scope('output_layers'):
+        with tf.name_scope('fc_layers'):
             fc_layers_num = self.network_hyperparameter['fc_layers_num']
             last_out = tf.reshape(layer_input, [-1, layer_input.shape[1]*layer_input.shape[2]])
             out_put = last_out
@@ -72,39 +67,6 @@ class ConvSequence2One:
             saver.restore(self.sess, load_dir+'/model.ckpt')
         return
 
-    def _cnn_layer(self, layer_id, layer_input):
-        kernel_size = self.network_hyperparameter['cnn_layers']['layer_%d' % layer_id]['kernel_size']
-        kernels_num = self.network_hyperparameter['cnn_layers']['layer_%d' % layer_id]['kernels_num']
-        stride = self.network_hyperparameter['cnn_layers']['layer_%d' % layer_id]['stride']
-        padding_pattern = self.network_hyperparameter['cnn_layers']['layer_%d' % layer_id]['padding']
-        activation_pattern = self.network_hyperparameter['cnn_layers']['layer_%d' % layer_id]['activation'].lower()
-        with tf.name_scope('layer_%d' % layer_id):
-            with tf.variable_scope('cnn_blocks_of_layer_%d' % layer_id):
-                kernel = tf.get_variable('kernel', shape=[kernel_size, layer_input.shape[-1], kernels_num],
-                                         dtype=self.dtype,
-                                         initializer=tf.contrib.layers.xavier_initializer())
-                # print(kernel.name)
-                conv = tf.nn.conv1d(layer_input, kernel, stride=stride, padding=padding_pattern, name='conv')
-                bias = tf.get_variable('bias', shape=[kernels_num], dtype=self.dtype,
-                                       initializer=tf.zeros_initializer())
-                v = tf.nn.bias_add(conv, bias)
-
-                if activation_pattern == 'glu':
-                    out = v[:, :, :kernels_num//2] * tf.nn.sigmoid(v[:, :, kernels_num//2:])
-                elif activation_pattern == 'relu':
-                    out = tf.nn.relu(v)
-                elif activation_pattern == 'sigmoid':
-                    out = tf.nn.sigmoid(v)
-                elif activation_pattern == 'tanh':
-                    out = tf.nn.tanh(v)
-                elif activation_pattern == 'softplus':
-                    out = tf.nn.softplus(v)
-                else:
-                    out = v
-                # illegal activation pattern string means linear activation
-
-        return out
-
     def _dense_layer(self, layer_name, layer_input, layer_out_size, activation_func='relu'):
         with tf.name_scope(layer_name):
             with tf.variable_scope(layer_name+'_variables'):
@@ -128,8 +90,7 @@ class ConvSequence2One:
                 # illegal input string will be treat as linear
         return out, linear_out
 
-    def train(self, data, labels, epoches, batch_size, train_set_sample_ids, learning_rate=0.001,
-              foresight_steps=None, reset_flag=False):
+    def train(self, data, labels, epoches, batch_size, train_set_sample_ids, foresight_steps=None, reset_flag=False):
         if reset_flag:
             self.sess.run(self.initializer)
         if foresight_steps is not None:
@@ -142,11 +103,9 @@ class ConvSequence2One:
         for i in range(epoches):
             print('epoch%d:' % i)
             data_set = self._data_generator(data, labels, self.sequence_length, batch_size, train_set_sample_ids)
-            for batch_data, batch_label, weight in data_set:
+            for batch_data, batch_label in data_set:
                 loss, _ = self.sess.run([self.loss, self.train_step],
-                                        feed_dict={self.input: batch_data, self.y: batch_label,
-                                                   self.learning_rate: learning_rate,
-                                                   self.weight_matrix: weight})
+                                        feed_dict={self.input: batch_data, self.y: batch_label})
                 print(loss)
             print()
             # self.sess.run(self.accuracy, feed_dict={})
@@ -163,7 +122,7 @@ class ConvSequence2One:
         data_set = self._data_generator(data, labels, self.sequence_length, batch_size, sample_ids)
         batch_count = 0
         accuracy = 0.
-        for batch_data, batch_label, _ in data_set:
+        for batch_data, batch_label in data_set:
             batch_count += batch_label.shape[0]
             accuracy += batch_label.shape[0] * self.sess.run(self.accuracy,
                                                              feed_dict={self.input: batch_data, self.y: batch_label})
@@ -187,12 +146,10 @@ class ConvSequence2One:
             for i, each_sample in enumerate(batch):
                 batch_data[i, :, :] = data[each_sample:(each_sample+length), :]
                 batch_label[i, int(labels[each_sample + length - 1 + self.foresight_steps, 0])] = 1
-            # weight = np.mean(batch_label, axis=0).dot(np.array([[1, 1, 1, 10]]).T)
-            weight = batch_label.dot(np.array([[1, 1, 1, 5000]]).T)
-            yield batch_data, batch_label, weight
+            yield batch_data, batch_label
 
         return  # 'one epoch done'
 
 
 if __name__ == '__main__':
-    t = ConvSequence2One(30, 2, 4, 3)
+    t = BPNN(30, 2, 4, 3)
