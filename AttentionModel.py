@@ -369,7 +369,7 @@ class OnlyAttention:
                     w = reuse_w
                     b = reuse_b
                 else:
-                    w = tf.get_variable('weight', shape=[layer_input.shape[1], layer_out_size], dtype=self.dtype,
+                    w = tf.get_variable('weight', shape=[layer_input.shape[-1], layer_out_size], dtype=self.dtype,
                                     initializer=tf.contrib.layers.xavier_initializer())
                     b = tf.Variable(initial_value=tf.constant(0, shape=[layer_out_size], dtype=self.dtype), name='bias')
                 linear_out = tf.nn.bias_add(tf.matmul(layer_input, w), b)

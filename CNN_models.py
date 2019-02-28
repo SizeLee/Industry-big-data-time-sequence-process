@@ -110,7 +110,7 @@ class ConvSequence2One:
             with tf.variable_scope(layer_name+'_variables'):
                 # w = tf.Variable(initial_value=tf.truncated_normal([layer_input.shape[1], layer_out_size], stddev=1e-1,
                 #                                                   dtype=self.dtype), name='weight')
-                w = tf.get_variable('weight', shape=[layer_input.shape[1], layer_out_size], dtype=self.dtype,
+                w = tf.get_variable('weight', shape=[layer_input.shape[-1], layer_out_size], dtype=self.dtype,
                                     initializer=tf.contrib.layers.xavier_initializer())
                 b = tf.Variable(initial_value=tf.constant(0, shape=[layer_out_size], dtype=self.dtype), name='bias')
                 linear_out = tf.nn.bias_add(tf.matmul(layer_input, w), b)
