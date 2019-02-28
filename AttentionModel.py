@@ -54,7 +54,9 @@ class OnlyAttention:
             with tf.name_scope('training_and_judging'):
                 self.y = tf.placeholder(shape=[None, self.class_num], dtype=self.dtype, name='labels')
                 self.weight_matrix = tf.placeholder(shape=[None, 1], dtype=self.dtype, name='weight_matrix')
-                print(tf.nn.softmax_cross_entropy_with_logits(logits=linear_out, labels=self.y).shape)
+                # print(tf.nn.softmax_cross_entropy_with_logits(logits=linear_out, labels=self.y).shape)
+                # print((tf.nn.softmax_cross_entropy_with_logits(logits=linear_out, labels=self.y)
+                #        * tf.reshape(self.weight_matrix, [-1])).shape)
                 self.loss = tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(logits=linear_out, labels=self.y)
                                           * tf.reshape(self.weight_matrix, [-1]))
                 self.learning_rate = tf.placeholder(dtype=self.dtype, name='learning_rate')
