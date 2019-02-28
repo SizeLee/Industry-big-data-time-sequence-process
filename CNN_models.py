@@ -52,7 +52,7 @@ class ConvSequence2One:
             self.y = tf.placeholder(shape=[None, self.class_num], dtype=self.dtype, name='labels')
             self.weight_matrix = tf.placeholder(shape=[None, 1], dtype=self.dtype, name='weight_matrix')
             self.loss = tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(logits=linear_out, labels=self.y)
-                                      * self.weight_matrix)
+                                      * tf.reshape(self.weight_matrix, [-1]))
             self.learning_rate = tf.placeholder(dtype=self.dtype, name='learning_rate')
             optimizer = tf.train.AdamOptimizer(self.learning_rate) # learning rate could be adjust
             self.train_step = optimizer.minimize(self.loss)

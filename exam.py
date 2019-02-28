@@ -30,38 +30,41 @@ if __name__ == '__main__':
     # training_sample_ids = list(map(int, data_set_ids['training_set']))
     # test_sample_ids = list(map(int, data_set_ids['test_set']))
 
-    # rnn exams
-    print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
-    print('rnn_model test start')
-    lstm = RNN_models.FixedLengthRNN(sequence_fix_length, data['features'].shape[1],
-                                     class_num=class_num, cell_type='lstm')
-    lstm.train(data['features'], data['labels'], 1, 1024, training_sample_ids,
-               foresight_steps=foresight_steps, reset_flag=True)
-    lstm.test(data['features'], data['labels'], test_sample_ids)
-    lstm.save_model('./model/rnn_model')
-    print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
-    print('rnn_model test over\n')
+    # # rnn exams
+    # print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
+    # print('rnn_model test start')
+    # lstm = RNN_models.FixedLengthRNN(sequence_fix_length, data['features'].shape[1],
+    #                                  class_num=class_num, cell_type='lstm')
+    # lstm.train(data['features'], data['labels'], 1, 1024, training_sample_ids,
+    #            foresight_steps=foresight_steps, reset_flag=True)
+    # lstm.test(data['features'], data['labels'], test_sample_ids)
+    # lstm.save_model('./model/rnn_model')
+    # print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
+    # print('rnn_model test over\n')
 
-    # cnn exams
-    print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
-    print('cnn_model test start')
-    cnn = CNN_models.ConvSequence2One(sequence_fix_length, data['features'].shape[1],
-                                     class_num=class_num)
-    cnn.train(data['features'], data['labels'], 1, 1024, training_sample_ids)
-    cnn.test(data['features'], data['labels'], test_sample_ids)
-    cnn.save_model('./model/cnn_model')
-    print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
-    print('cnn_model test over\n')
+    # # cnn exams
+    # print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
+    # print('cnn_model test start')
+    # cnn = CNN_models.ConvSequence2One(sequence_fix_length, data['features'].shape[1],
+    #                                  class_num=class_num)
+    # cnn.train(data['features'], data['labels'], 1, 1024, training_sample_ids)
+    # cnn.test(data['features'], data['labels'], test_sample_ids)
+    # cnn.save_model('./model/cnn_model')
+    # print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
+    # print('cnn_model test over\n')
 
     # attention net exams
     print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
     print('atn_model test start')
+    start_time = time.time()
     atn = AttentionModel.OnlyAttention(sequence_fix_length, data['features'].shape[1], class_num=class_num,
                                        network_hyperparameters='./data/attention_network_hyperparameters_v2.json')
     atn.train(data['features'], data['labels'], 1, 1024, training_sample_ids)
     atn.test(data['features'], data['labels'], test_sample_ids)
     atn.save_model('./model/atn_model_new')
     print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
+    end_time = time.time()
+    print('cost time %f' % (end_time - start_time))
     print('atn_model test over\n')
 
 
@@ -69,11 +72,14 @@ if __name__ == '__main__':
     # BPNN exams
     print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
     print('bpnn_model test start')
+    start_time = time.time()
     bpnn = RNN_models.FixedLengthRNN(sequence_fix_length, data['features'].shape[1], class_num=class_num)
     bpnn.train(data['features'], data['labels'], 1, 1024, training_sample_ids,
                foresight_steps=foresight_steps, reset_flag=True)
     bpnn.test(data['features'], data['labels'], test_sample_ids)
     bpnn.save_model('./model/bpnn_model')
     print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
+    end_time = time.time()
+    print('cost time %f' % (end_time - start_time))
     print('bpnn_model test over\n')
 

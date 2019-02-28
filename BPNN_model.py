@@ -47,7 +47,7 @@ class BPNN:
             self.y = tf.placeholder(shape=[None, self.class_num], dtype=self.dtype, name='labels')
             self.weight_matrix = tf.placeholder(shape=[None, 1], dtype=self.dtype, name='weight_matrix')
             self.loss = tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(logits=linear_out, labels=self.y)
-                                      * self.weight_matrix)
+                                      * tf.reshape(self.weight_matrix, [-1]))
             self.learning_rate = tf.placeholder(dtype=self.dtype, name='learning_rate')
             optimizer = tf.train.AdamOptimizer(self.learning_rate) # learning rate could be adjust
             self.train_step = optimizer.minimize(self.loss)
@@ -90,7 +90,8 @@ class BPNN:
                 # illegal input string will be treat as linear
         return out, linear_out
 
-    def train(self, data, labels, epoches, batch_size, train_set_sample_ids, foresight_steps=None, reset_flag=False):
+    def train(self, data, labels, epoches, batch_size, train_set_sample_ids, learning_rate=0.001,
+              foresight_steps=None, reset_flag=False):
         if reset_flag:
             self.sess.run(self.initializer)
         if foresight_steps is not None:
@@ -103,9 +104,11 @@ class BPNN:
         for i in range(epoches):
             print('epoch%d:' % i)
             data_set = self._data_generator(data, labels, self.sequence_length, batch_size, train_set_sample_ids)
-            for batch_data, batch_label in data_set:
+            for batch_data, batch_label, weight in data_set:
                 loss, _ = self.sess.run([self.loss, self.train_step],
-                                        feed_dict={self.input: batch_data, self.y: batch_label})
+                                        feed_dict={self.input: batch_data, self.y: batch_label,
+                                                   self.learning_rate: learning_rate,
+                                                   self.weight_matrix: weight})
                 print(loss)
             print()
             # self.sess.run(self.accuracy, feed_dict={})
@@ -146,7 +149,9 @@ class BPNN:
             for i, each_sample in enumerate(batch):
                 batch_data[i, :, :] = data[each_sample:(each_sample+length), :]
                 batch_label[i, int(labels[each_sample + length - 1 + self.foresight_steps, 0])] = 1
-            yield batch_data, batch_label
+            # weight = np.mean(batch_label, axis=0).dot(np.array([[1, 1, 1, 10]]).T)
+            weight = batch_label.dot(np.array([[1, 1, 1, 5000]]).T)
+            yield batch_data, batch_label, weight
 
         return  # 'one epoch done'
 

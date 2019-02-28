@@ -54,8 +54,9 @@ class OnlyAttention:
             with tf.name_scope('training_and_judging'):
                 self.y = tf.placeholder(shape=[None, self.class_num], dtype=self.dtype, name='labels')
                 self.weight_matrix = tf.placeholder(shape=[None, 1], dtype=self.dtype, name='weight_matrix')
+                print(tf.nn.softmax_cross_entropy_with_logits(logits=linear_out, labels=self.y).shape)
                 self.loss = tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(logits=linear_out, labels=self.y)
-                                          * self.weight_matrix)
+                                          * tf.reshape(self.weight_matrix, [-1]))
                 self.learning_rate = tf.placeholder(dtype=self.dtype, name='learning_rate')
                 optimizer = tf.train.AdamOptimizer(self.learning_rate)  # learning rate could be adjust
                 self.train_step = optimizer.minimize(self.loss)
@@ -79,6 +80,7 @@ class OnlyAttention:
             print('epoch%d:' % i)
             data_set = self._data_generator(data, labels, self.fixed_length, batch_size, train_set_sample_ids)
             for batch_data, batch_label, weight in data_set:
+                # print(weight)
                 loss, _ = self.sess.run([self.loss, self.train_step],
                                         feed_dict={self.input: batch_data, self.y: batch_label,
                                                    self.learning_rate: learning_rate,
@@ -435,10 +437,10 @@ class OnlyAttention:
                 batch_data[i, :, :] = data[each_sample:(each_sample+length), :]
                 batch_label[i, int(labels[each_sample + length - 1 + self.foresight_steps, 0])] = 1
             # weight = np.mean(batch_label, axis=0).dot(np.array([[1, 1, 1, 10]]).T)
-            weight = batch_label.dot(np.array([[1, 1, 1, 500]]).T)
+            weight = batch_label.dot(np.array([[1, 1, 1, 5000]]).T)
             yield batch_data, batch_label, weight
 
-        return # 'one epoch done'
+        return  # 'one epoch done'
 
 if __name__ == '__main__':
     oa = OnlyAttention(30, 2, 4, 3)
