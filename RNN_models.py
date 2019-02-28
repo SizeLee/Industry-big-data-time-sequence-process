@@ -51,7 +51,7 @@ class FixedLengthRNN:
 
         with tf.name_scope('training_and_judging'):
             self.y = tf.placeholder(shape=[None, self.class_num], dtype=self.dtype, name='labels')
-            self.loss = tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(logits=linear_out, labels=self.y))
+            self.loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=linear_out, labels=self.y))
             optimizer = tf.train.AdamOptimizer() # learning rate could be adjust
             self.train_step = optimizer.minimize(self.loss)
             self.accuracy = tf.reduce_mean(tf.cast(tf.equal(self.predict, tf.argmax(self.y, axis=1)), dtype=self.dtype))

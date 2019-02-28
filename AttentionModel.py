@@ -57,7 +57,7 @@ class OnlyAttention:
                 # print(tf.nn.softmax_cross_entropy_with_logits(logits=linear_out, labels=self.y).shape)
                 # print((tf.nn.softmax_cross_entropy_with_logits(logits=linear_out, labels=self.y)
                 #        * tf.reshape(self.weight_matrix, [-1])).shape)
-                self.loss = tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(logits=linear_out, labels=self.y)
+                self.loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=linear_out, labels=self.y)
                                           * tf.reshape(self.weight_matrix, [-1]))
                 self.learning_rate = tf.placeholder(dtype=self.dtype, name='learning_rate')
                 optimizer = tf.train.AdamOptimizer(self.learning_rate)  # learning rate could be adjust
@@ -439,7 +439,7 @@ class OnlyAttention:
                 batch_data[i, :, :] = data[each_sample:(each_sample+length), :]
                 batch_label[i, int(labels[each_sample + length - 1 + self.foresight_steps, 0])] = 1
             # weight = np.mean(batch_label, axis=0).dot(np.array([[1, 1, 1, 10]]).T)
-            weight = batch_label.dot(np.array([[1, 1, 1, 5000]]).T)
+            weight = batch_label.dot(np.array([[1, 1, 1, 1]]).T)
             yield batch_data, batch_label, weight
 
         return  # 'one epoch done'
