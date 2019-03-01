@@ -1,7 +1,7 @@
 import numpy as np
 
 if __name__ == '__main__':
-    data = np.load('./data/data_with_label.npz')
+    data = np.load('./data/data_with_label_v2.npz')
     class_distribution = {}
     labels = data['labels']
     for i in range(labels.shape[0]):

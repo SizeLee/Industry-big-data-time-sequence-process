@@ -94,8 +94,40 @@ class OnlyAttention:
         print('accuracy on training set: %f' % accuracy)
         return
 
+    def train_v2(self, data, labels, samples_length, epoches, batch_size, train_set_sample_ids, learning_rate=0.001,
+              foresight_steps=None, reset_flag=False):
+        if reset_flag:
+            self.sess.run(self.initializer)
+        if foresight_steps is not None:
+            try:
+                self.foresight_steps = int(foresight_steps)
+            except:
+                print('Wrong format of value of variable foresight_steps')
+                pass
+
+        for i in range(epoches):
+            print('epoch%d:' % i)
+            data_set = self._data_generator_v2(data, labels, self.fixed_length, samples_length, batch_size, train_set_sample_ids)
+            for batch_data, batch_label, weight in data_set:
+                # print(weight)
+                loss, _ = self.sess.run([self.loss, self.train_step],
+                                        feed_dict={self.input: batch_data, self.y: batch_label,
+                                                   self.learning_rate: learning_rate,
+                                                   self.weight_matrix: weight})
+                print(loss)
+            print()
+            # self.sess.run(self.accuracy, feed_dict={})
+        accuracy = self._cal_accuracy_v2(data, labels, samples_length, batch_size, train_set_sample_ids)
+        print('accuracy on training set: %f' % accuracy)
+        return
+
     def test(self, data, label, test_set_sample_ids=None, batch_size=1024, data_set_name='test set'):
         accuracy = self._cal_accuracy(data, label, batch_size, test_set_sample_ids)
+        print('accuracy on %s: %f' % (data_set_name, accuracy))
+        return
+
+    def test_v2(self, data, label, samples_length, test_set_sample_ids=None, batch_size=1024, data_set_name='test set'):
+        accuracy = self._cal_accuracy_v2(data, label, samples_length, batch_size, test_set_sample_ids)
         print('accuracy on %s: %f' % (data_set_name, accuracy))
         return
 
@@ -420,6 +452,42 @@ class OnlyAttention:
                                                              feed_dict={self.input: batch_data, self.y: batch_label})
         accuracy /= batch_count
         return accuracy
+
+    def _cal_accuracy_v2(self, data, labels, samples_length, batch_size, sample_ids=None):
+        data_set = self._data_generator_v2(data, labels, self.fixed_length, samples_length, batch_size, sample_ids)
+        batch_count = 0
+        accuracy = 0.
+        for batch_data, batch_label, _ in data_set:
+            batch_count += batch_label.shape[0]
+            accuracy += batch_label.shape[0] * self.sess.run(self.accuracy,
+                                                             feed_dict={self.input: batch_data, self.y: batch_label})
+        accuracy /= batch_count
+        return accuracy
+
+    def _data_generator_v2(self, data, labels, max_length, samples_length, batch_size, sample_ids=None):
+        if sample_ids is None:
+            sample_ids = set([i for i in range(data.shape[0] - max_length + 1 - self.foresight_steps)])
+        else:
+            sample_ids = set(filter(lambda x: x < (data.shape[0] - max_length + 1 - self.foresight_steps), sample_ids))
+
+        while len(sample_ids) > 0:
+            if batch_size >= len(sample_ids):
+                batch = list(sample_ids)
+            else:
+                batch = random.sample(sample_ids, batch_size)
+            sample_ids = sample_ids - set(batch)
+            batch_data = np.zeros((batch_size, max_length, data.shape[1]))
+            batch_label = np.zeros((batch_size,  self.class_num))
+            for i, each_sample in enumerate(batch):
+                batch_data[i, :int(samples_length[each_sample, 0]), :] \
+                    = data[each_sample:(each_sample + int(samples_length[each_sample, 0])), :]
+
+                batch_label[i, int(labels[each_sample, 0])] = 1
+            # weight = np.mean(batch_label, axis=0).dot(np.array([[1, 1, 1, 10]]).T)
+            weight = batch_label.dot(np.array([[1, 1, 1]]).T)
+            yield batch_data, batch_label, weight
+
+        return  # 'one epoch done'
 
     def _data_generator(self, data, labels, length, batch_size, sample_ids=None):
         if sample_ids is None:

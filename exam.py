@@ -15,6 +15,7 @@ if __name__ == '__main__':
     data = np.load(common_para['path']['data_file'])
     # print(data['features'])
     # print(data['labels'])
+    # print(data['samples_length'])
 
     ### generate training samples' id
     # sample_num = data['labels'].shape[0]
@@ -30,28 +31,40 @@ if __name__ == '__main__':
     # training_sample_ids = list(map(int, data_set_ids['training_set']))
     # test_sample_ids = list(map(int, data_set_ids['test_set']))
 
-    # rnn exams
-    print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
-    print('rnn_model test start')
-    lstm = RNN_models.FixedLengthRNN(sequence_fix_length, data['features'].shape[1],
-                                     class_num=class_num, cell_type='lstm')
-    lstm.train(data['features'], data['labels'], 1, 1024, training_sample_ids,
-               foresight_steps=foresight_steps, reset_flag=True)
-    lstm.test(data['features'], data['labels'], test_sample_ids)
-    lstm.save_model('./model/rnn_model')
-    print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
-    print('rnn_model test over\n')
-
-    # cnn exams
-    print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
-    print('cnn_model test start')
-    cnn = CNN_models.ConvSequence2One(sequence_fix_length, data['features'].shape[1],
-                                     class_num=class_num)
-    cnn.train(data['features'], data['labels'], 1, 1024, training_sample_ids)
-    cnn.test(data['features'], data['labels'], test_sample_ids)
-    cnn.save_model('./model/cnn_model')
-    print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
-    print('cnn_model test over\n')
+    # # rnn exams
+    # print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
+    # print('rnn_model test start')
+    # lstm = RNN_models.FixedLengthRNN(sequence_fix_length, data['features'].shape[1],
+    #                                  class_num=class_num, cell_type='lstm')
+    # # lstm.train(data['features'], data['labels'], 1, 1024, training_sample_ids,
+    # #            foresight_steps=foresight_steps, reset_flag=True)
+    # # lstm.test(data['features'], data['labels'], test_sample_ids)
+    # # lstm.save_model('./model/rnn_model')
+    #
+    # lstm.train_v2(data['features'], data['labels'], data['samples_length'], 1, 1024, training_sample_ids,
+    #            foresight_steps=0, reset_flag=True)
+    # lstm.test_v2(data['features'], data['labels'], data['samples_length'], test_sample_ids)
+    # lstm.save_model('./model/rnn_model_v2')
+    #
+    # print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
+    # print('rnn_model test over\n')
+    #
+    # # cnn exams
+    # print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
+    # print('cnn_model test start')
+    # cnn = CNN_models.ConvSequence2One(sequence_fix_length, data['features'].shape[1],
+    #                                  class_num=class_num)
+    # # cnn.train(data['features'], data['labels'], 1, 1024, training_sample_ids)
+    # # cnn.test(data['features'], data['labels'], test_sample_ids)
+    # # cnn.save_model('./model/cnn_model')
+    #
+    # cnn.train_v2(data['features'], data['labels'], data['samples_length'], 1, 1024, training_sample_ids,
+    #               foresight_steps=0, reset_flag=True)
+    # cnn.test_v2(data['features'], data['labels'], data['samples_length'], test_sample_ids)
+    # cnn.save_model('./model/cnn_model_v2')
+    #
+    # print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
+    # print('cnn_model test over\n')
 
     # attention net exams
     print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
@@ -59,27 +72,41 @@ if __name__ == '__main__':
     start_time = time.time()
     atn = AttentionModel.OnlyAttention(sequence_fix_length, data['features'].shape[1], class_num=class_num,
                                        network_hyperparameters='./data/attention_network_hyperparameters_v2.json')
-    atn.train(data['features'], data['labels'], 1, 1024, training_sample_ids)
-    atn.test(data['features'], data['labels'], test_sample_ids)
-    atn.save_model('./model/atn_model_new')
+
+    # atn.train(data['features'], data['labels'], 1, 1024, training_sample_ids)
+    # atn.test(data['features'], data['labels'], test_sample_ids)
+    # atn.save_model('./model/atn_model_new')
+
+    atn.train_v2(data['features'], data['labels'], data['samples_length'], 10, 1024, training_sample_ids,
+                  foresight_steps=0, reset_flag=True)
+    atn.test_v2(data['features'], data['labels'], data['samples_length'], test_sample_ids)
+    atn.save_model('./model/atn_model_v2')
+
     print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
     end_time = time.time()
     print('cost time %f' % (end_time - start_time))
     print('atn_model test over\n')
 
 
-    # traditional ways
-    # BPNN exams
-    print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
-    print('bpnn_model test start')
-    start_time = time.time()
-    bpnn = RNN_models.FixedLengthRNN(sequence_fix_length, data['features'].shape[1], class_num=class_num)
-    bpnn.train(data['features'], data['labels'], 1, 4096, training_sample_ids,
-               foresight_steps=foresight_steps, reset_flag=True)
-    bpnn.test(data['features'], data['labels'], test_sample_ids)
-    bpnn.save_model('./model/bpnn_model')
-    print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
-    end_time = time.time()
-    print('cost time %f' % (end_time - start_time))
-    print('bpnn_model test over\n')
+    # # traditional ways
+    # # BPNN exams
+    # print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
+    # print('bpnn_model test start')
+    # start_time = time.time()
+    # bpnn = RNN_models.FixedLengthRNN(sequence_fix_length, data['features'].shape[1], class_num=class_num)
+    #
+    # # bpnn.train(data['features'], data['labels'], 1, 4096, training_sample_ids,
+    # #            foresight_steps=foresight_steps, reset_flag=True)
+    # # bpnn.test(data['features'], data['labels'], test_sample_ids)
+    # # bpnn.save_model('./model/bpnn_model')
+    #
+    # bpnn.train_v2(data['features'], data['labels'], data['samples_length'], 1, 1024, training_sample_ids,
+    #               foresight_steps=0, reset_flag=True)
+    # bpnn.test_v2(data['features'], data['labels'], data['samples_length'], test_sample_ids)
+    # bpnn.save_model('./model/rnn_model_v2')
+    #
+    # print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
+    # end_time = time.time()
+    # print('cost time %f' % (end_time - start_time))
+    # print('bpnn_model test over\n')
 
