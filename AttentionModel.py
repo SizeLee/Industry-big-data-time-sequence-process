@@ -40,7 +40,9 @@ class OnlyAttention:
             layer_input = self.input
 
             position_embedding = self._position_embedding(self.fixed_length, self.input_size, 'pre_process_layer')
+            # position_embedding = self._position_embedding_v2(self.fixed_length, self.input_size, 'pre_process_layer')
             layer_input = self.input + position_embedding
+            self.check = position_embedding
 
             with tf.name_scope('encoder_layers'):
                 encoder_num = self.network_hyperparameter['encoder_num']
@@ -115,10 +117,12 @@ class OnlyAttention:
                                                    self.learning_rate: learning_rate,
                                                    self.weight_matrix: weight})
                 print(loss)
+                # print(check)
             print()
             # self.sess.run(self.accuracy, feed_dict={})
         accuracy = self._cal_accuracy_v2(data, labels, samples_length, batch_size, train_set_sample_ids)
         print('accuracy on training set: %f' % accuracy)
+        # print(check)
         return
 
     def test(self, data, label, test_set_sample_ids=None, batch_size=1024, data_set_name='test set'):
@@ -149,7 +153,7 @@ class OnlyAttention:
             attention_type = net_structure["attention_type"]
             if attention_type.lower() == 'mha':  # mha for multi-head attention, fa for feature attention
                 mha = self._multi_head_attention(layer_input, layer_input, layer_input,
-                                                 'multi-head_attention', net_structure['attention_layer'])
+                                                 layer_name + '_multi-head_attention', net_structure['attention_layer'])
                 if net_structure['attention_layer']['residual_flag'].lower() == 'true':
                     layer_out = mha + layer_input
                 else:
@@ -181,6 +185,8 @@ class OnlyAttention:
                 return layer_out
 
             else:
+                if len(layer_out.shape) == 3:
+                    layer_out = tf.reshape(layer_out, [-1, layer_out.shape[1] * layer_out.shape[2]])
                 fc_layer_num = net_structure['fc_layer_num']
                 linear_out = layer_out
                 for i in range(fc_layer_num):
@@ -442,6 +448,32 @@ class OnlyAttention:
             signal = tf.reshape(signal, [1, length, channels])
         return signal
 
+    def _position_embedding_v2(self, length, channels, layer_name, max_time_scale=1.0e4, min_time_scale=1.0, start_index=0):
+        with tf.name_scope('%s_position_embedding' % layer_name):
+            position = tf.cast(tf.range(length) + start_index, dtype=self.dtype)
+            dimention = tf.cast(tf.range(channels // 2), dtype=self.dtype)
+
+            signal = tf.expand_dims(position, 1) / tf.pow(float(max_time_scale) / float(min_time_scale),
+                                                          2 * tf.expand_dims(dimention, 0) / float(channels))
+
+            sin_signal = tf.sin(signal)
+            cos_signal = tf.cos(signal)
+
+            signal = tf.reshape(tf.concat([tf.reshape(sin_signal, [-1, 1]), tf.reshape(cos_signal, [-1, 1])], axis=1),
+                                [-1, (channels // 2) * 2])
+
+            if channels % 2 == 1:
+                last_embedding = tf.expand_dims(position, 1) \
+                                 / tf.pow(float(max_time_scale) / float(min_time_scale),
+                                       2 * tf.constant(channels // 2, shape=[1, 1], dtype=self.dtype) / float(channels))
+                signal = tf.concat([signal, tf.sin(last_embedding)], axis=-1)
+
+            signal = tf.reshape(signal, [1, length, channels])
+
+            signal = tf.get_variable('changeable_position_embedding', initializer=signal)
+
+        return signal
+
     def _cal_accuracy(self, data, labels, batch_size, sample_ids=None):
         data_set = self._data_generator(data, labels, self.fixed_length, batch_size, sample_ids)
         batch_count = 0
@@ -484,7 +516,7 @@ class OnlyAttention:
 
                 batch_label[i, int(labels[each_sample, 0])] = 1
             # weight = np.mean(batch_label, axis=0).dot(np.array([[1, 1, 1, 10]]).T)
-            weight = batch_label.dot(np.array([[1, 1, 1]]).T)
+            weight = batch_label.dot(np.ones((self.class_num, 1)))
             yield batch_data, batch_label, weight
 
         return  # 'one epoch done'

@@ -219,7 +219,7 @@ class BPNN:
 
                 batch_label[i, int(labels[each_sample, 0])] = 1
             # weight = np.mean(batch_label, axis=0).dot(np.array([[1, 1, 1, 10]]).T)
-            weight = batch_label.dot(np.array([[1, 1, 1]]).T)
+            weight = batch_label.dot(np.ones((self.class_num, 1)))
             yield batch_data, batch_label, weight
 
         return  # 'one epoch done'

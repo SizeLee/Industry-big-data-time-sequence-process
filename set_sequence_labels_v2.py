@@ -22,7 +22,8 @@ class ClusterSetLabel:
         cp = configparser.ConfigParser()
         cp.read('common_para.ini')
         sequence_max_length = cp['common_parameters'].getint('sequence_fix_length')
-        sample_ids, samples_length, new_labels = self._set_samples_and_labels(k_clusters, whole_label, sequence_max_length)
+        circle_time = cp['common_parameters'].getint('class_num')
+        sample_ids, samples_length, new_labels = self._set_samples_and_labels(k_clusters, whole_label, sequence_max_length, circle_time)
 
         print(self.features.shape)
         print(new_labels.shape)
@@ -44,8 +45,8 @@ class ClusterSetLabel:
                 max_class = each
         return max_class
 
-    def _set_samples_and_labels(self, k_clusters, whole_label, sequence_max_length):
-        class_num = len(k_clusters)
+    def _set_samples_and_labels(self, k_clusters, whole_label, sequence_max_length, circle_time):
+        # class_num = len(k_clusters)
         sample_ids = [i for i in range(len(whole_label) - sequence_max_length + 1)]
         samples_length = np.zeros((len(sample_ids), 1))
         new_labels = np.zeros((len(sample_ids), 1))
@@ -55,7 +56,8 @@ class ClusterSetLabel:
             cur_label = whole_label[i]
             for j in range(1, cur_sample_length):
                 cur_label += (whole_label[i + j] + 1)
-            cur_label %= class_num
+            # cur_label %= class_num
+            cur_label %= circle_time
             new_labels[i, 0] = cur_label
 
         sample_ids = np.array(sample_ids).reshape((-1, 1))
