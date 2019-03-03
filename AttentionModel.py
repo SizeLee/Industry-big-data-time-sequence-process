@@ -44,6 +44,14 @@ class OnlyAttention:
             layer_input = self.input + position_embedding
             self.check = position_embedding
 
+            with tf.name_scope('cnn_layers'):
+                layer_out = layer_input
+                conv_layers_num = self.network_hyperparameter['cnn_layers_num']
+                for i in range(conv_layers_num):
+                    layer_out = self._cnn_layer(i + 1, layer_out, self.network_hyperparameter)
+
+            layer_input = layer_out
+
             with tf.name_scope('encoder_layers'):
                 encoder_num = self.network_hyperparameter['encoder_num']
                 for i in range(encoder_num):
@@ -184,6 +192,13 @@ class OnlyAttention:
                                                         net_structure['position_wise_net'])
                 return layer_out
 
+            elif 'cnn_layers' in net_structure:
+                with tf.name_scope('cnn_layers'):
+                    conv_layers_num = net_structure['cnn_layers_num']
+                    for i in range(conv_layers_num):
+                        layer_out = self._cnn_layer(i + 1, layer_out, net_structure)
+                return layer_out
+
             else:
                 if len(layer_out.shape) == 3:
                     layer_out = tf.reshape(layer_out, [-1, layer_out.shape[1] * layer_out.shape[2]])
@@ -200,10 +215,44 @@ class OnlyAttention:
 
                 return linear_out
 
+    def _cnn_layer(self, layer_id, layer_input, net_structure):
+        kernel_size = net_structure['cnn_layers']['layer_%d' % layer_id]['kernel_size']
+        kernels_num = net_structure['cnn_layers']['layer_%d' % layer_id]['kernels_num']
+        stride = net_structure['cnn_layers']['layer_%d' % layer_id]['stride']
+        padding_pattern = net_structure['cnn_layers']['layer_%d' % layer_id]['padding']
+        activation_pattern = net_structure['cnn_layers']['layer_%d' % layer_id]['activation'].lower()
+        with tf.name_scope('layer_%d' % layer_id):
+            with tf.variable_scope('cnn_blocks_of_layer_%d' % layer_id):
+                kernel = tf.get_variable('kernel', shape=[kernel_size, layer_input.shape[-1], kernels_num],
+                                         dtype=self.dtype,
+                                         initializer=tf.contrib.layers.xavier_initializer())
+                # print(kernel.name)
+                conv = tf.nn.conv1d(layer_input, kernel, stride=stride, padding=padding_pattern, name='conv')
+                bias = tf.get_variable('bias', shape=[kernels_num], dtype=self.dtype,
+                                       initializer=tf.zeros_initializer())
+                v = tf.nn.bias_add(conv, bias)
+
+                if activation_pattern == 'glu':
+                    out = v[:, :, :kernels_num//2] * tf.nn.sigmoid(v[:, :, kernels_num//2:])
+                elif activation_pattern == 'relu':
+                    out = tf.nn.relu(v)
+                elif activation_pattern == 'sigmoid':
+                    out = tf.nn.sigmoid(v)
+                elif activation_pattern == 'tanh':
+                    out = tf.nn.tanh(v)
+                elif activation_pattern == 'softplus':
+                    out = tf.nn.softplus(v)
+                else:
+                    out = v
+                # illegal activation pattern string means linear activation
+
+        return out
+
     def _feature_attention(self, q, k, v, layer_name, net_structure):
         # similar to position attention, do it before position embedding
         head_num = net_structure['head_num']
         head_size = net_structure['head_size']
+        sequence_length = q.shape[1]
         with tf.variable_scope(layer_name):
             q = tf.reshape(q, [-1, q.shape[-1]], name='reshape_q')
             k = tf.reshape(k, [-1, k.shape[-1]], name='reshape_k')
@@ -223,9 +272,9 @@ class OnlyAttention:
                 k = tf.matmul(k, linear_project_kw)
                 v = tf.matmul(v, linear_project_vw)
 
-                q = tf.reshape(q, [-1, self.fixed_length, q.shape[-1]])
-                k = tf.reshape(k, [-1, self.fixed_length, k.shape[-1]])
-                v = tf.reshape(v, [-1, self.fixed_length, v.shape[-1]])
+                q = tf.reshape(q, [-1, sequence_length, q.shape[-1]])
+                k = tf.reshape(k, [-1, sequence_length, k.shape[-1]])
+                v = tf.reshape(v, [-1, sequence_length, v.shape[-1]])
 
             with tf.name_scope('scaled_dot_product_attention'):
                 q = tf.concat(tf.split(q, head_num, axis=2), axis=0)
@@ -254,13 +303,14 @@ class OnlyAttention:
                 output = tf.reshape(tf.matmul(tf.reshape(concat,
                                                          [-1, concat.shape[-1]]),
                                               w),
-                                    [-1, self.fixed_length, output_size])
+                                    [-1, sequence_length, output_size])
 
         return output
 
     def _multi_head_attention(self, q, k, v, layer_name, net_structure):
         head_num = net_structure['head_num']
         head_size = net_structure['head_size']
+        sequence_length = q.shape[1]
         with tf.variable_scope(layer_name):
             q = tf.reshape(q, [-1, q.shape[-1]], name='reshape_q')
             k = tf.reshape(k, [-1, k.shape[-1]], name='reshape_k')
@@ -280,9 +330,9 @@ class OnlyAttention:
                 k = tf.matmul(k, linear_project_kw)
                 v = tf.matmul(v, linear_project_vw)
 
-                q = tf.reshape(q, [-1, self.fixed_length, q.shape[-1]])
-                k = tf.reshape(k, [-1, self.fixed_length, k.shape[-1]])
-                v = tf.reshape(v, [-1, self.fixed_length, v.shape[-1]])
+                q = tf.reshape(q, [-1, sequence_length, q.shape[-1]])
+                k = tf.reshape(k, [-1, sequence_length, k.shape[-1]])
+                v = tf.reshape(v, [-1, sequence_length, v.shape[-1]])
 
             with tf.name_scope('scaled_dot_product_attention'):
                 q = tf.concat(tf.split(q, head_num, axis=2), axis=0)
@@ -311,13 +361,14 @@ class OnlyAttention:
                 output = tf.reshape(tf.matmul(tf.reshape(concat,
                                                          [-1, concat.shape[-1]]),
                                               w),
-                                    [-1, self.fixed_length, output_size])
+                                    [-1, sequence_length, output_size])
 
         return output  # output shape [sample, fixed_length, output_size]
 
     def _summarize_attention(self, k, v, layer_name, net_structure):
         head_num = net_structure['head_num']
         head_size = net_structure['head_size']
+        sequence_length = k.shape[1]
         sample_num = tf.shape(k)[0]
         with tf.variable_scope(layer_name):
             q = tf.get_variable('q', shape=[1, k.shape[-1]], dtype=self.dtype,
@@ -340,8 +391,8 @@ class OnlyAttention:
                 k = tf.matmul(k, linear_project_kw)
                 v = tf.matmul(v, linear_project_vw)
                 q = tf.tile(tf.expand_dims(q, axis=0), [sample_num, 1, 1])  # [sample, 1, head_size*head_num]
-                k = tf.reshape(k, [-1, self.fixed_length, k.shape[-1]])
-                v = tf.reshape(v, [-1, self.fixed_length, v.shape[-1]])
+                k = tf.reshape(k, [-1, sequence_length, k.shape[-1]])
+                v = tf.reshape(v, [-1, sequence_length, v.shape[-1]])
 
             with tf.name_scope('summarizer_attention'):
                 q = tf.concat(tf.split(q, head_num, axis=2), axis=0)  # [sample*head_num, 1, head_size]
@@ -377,6 +428,7 @@ class OnlyAttention:
     def _position_wise_dense_layer(self, layer_input, layer_name, network_structure):
         w1_size = network_structure['w1_size']
         w2_size = network_structure['w2_size']
+        sequence_length = layer_input.shape[1]
         with tf.variable_scope(layer_name):
             w1 = tf.get_variable('weight1', shape=[layer_input.shape[-1], w1_size],
                                                dtype=self.dtype,
@@ -390,7 +442,7 @@ class OnlyAttention:
             b = tf.Variable(initial_value=tf.constant(0, shape=[w2_size], dtype=self.dtype), name='bias2')
             output = tf.nn.relu(tf.nn.bias_add(tf.matmul(output, w2), b))
 
-            output = tf.reshape(output, [-1, self.fixed_length, w2_size])
+            output = tf.reshape(output, [-1, sequence_length, w2_size])
 
             if network_structure['residual_flag'].lower() == 'true':
                 output = output + layer_input

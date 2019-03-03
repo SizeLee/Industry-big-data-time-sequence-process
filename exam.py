@@ -32,8 +32,9 @@ if __name__ == '__main__':
     # test_sample_ids = list(map(int, data_set_ids['test_set']))
 
     # rnn exams
+    # lstm
     print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
-    print('rnn_model test start')
+    print('lstm_model test start')
     lstm = RNN_models.FixedLengthRNN(sequence_fix_length, data['features'].shape[1],
                                      class_num=class_num, cell_type='lstm')
     # lstm.train(data['features'], data['labels'], 1, 1024, training_sample_ids,
@@ -44,10 +45,46 @@ if __name__ == '__main__':
     lstm.train_v2(data['features'], data['labels'], data['samples_length'], 1, 1024, training_sample_ids,
                foresight_steps=0, reset_flag=True)
     lstm.test_v2(data['features'], data['labels'], data['samples_length'], test_sample_ids)
-    lstm.save_model('./model/rnn_model_v2')
+    lstm.save_model('./model/lstm_model_v2')
 
     print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
-    print('rnn_model test over\n')
+    print('lstm_model test over\n')
+
+    # gru
+    print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
+    print('gru_model test start')
+    gru = RNN_models.FixedLengthRNN(sequence_fix_length, data['features'].shape[1],
+                                     class_num=class_num, cell_type='gru')
+    # gru.train(data['features'], data['labels'], 1, 1024, training_sample_ids,
+    #            foresight_steps=foresight_steps, reset_flag=True)
+    # gru.test(data['features'], data['labels'], test_sample_ids)
+    # gru.save_model('./model/rnn_model')
+
+    gru.train_v2(data['features'], data['labels'], data['samples_length'], 1, 1024, training_sample_ids,
+                  foresight_steps=0, reset_flag=True)
+    gru.test_v2(data['features'], data['labels'], data['samples_length'], test_sample_ids)
+    gru.save_model('./model/gru_model_v2')
+
+    print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
+    print('gru_model test over\n')
+
+    # sru
+    print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
+    print('sru_model test start')
+    sru = RNN_models.FixedLengthRNN(sequence_fix_length, data['features'].shape[1],
+                                     class_num=class_num, cell_type='sru')
+    # sru.train(data['features'], data['labels'], 1, 1024, training_sample_ids,
+    #            foresight_steps=foresight_steps, reset_flag=True)
+    # sru.test(data['features'], data['labels'], test_sample_ids)
+    # sru.save_model('./model/rnn_model')
+
+    sru.train_v2(data['features'], data['labels'], data['samples_length'], 1, 1024, training_sample_ids,
+                  foresight_steps=0, reset_flag=True)
+    sru.test_v2(data['features'], data['labels'], data['samples_length'], test_sample_ids)
+    sru.save_model('./model/sru_model_v2')
+
+    print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
+    print('sru_model test over\n')
 
     # cnn exams
     print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
@@ -77,7 +114,7 @@ if __name__ == '__main__':
     # atn.test(data['features'], data['labels'], test_sample_ids)
     # atn.save_model('./model/atn_model_new')
 
-    atn.train_v2(data['features'], data['labels'], data['samples_length'], 1, 1024, training_sample_ids,
+    atn.train_v2(data['features'], data['labels'], data['samples_length'], 2, 1024, training_sample_ids,
                  foresight_steps=0, reset_flag=True)
     atn.test_v2(data['features'], data['labels'], data['samples_length'], test_sample_ids)
     atn.save_model('./model/atn_model_v2')
