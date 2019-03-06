@@ -1,5 +1,5 @@
 import numpy as np
-import BPNN_model
+import BPNN_model, KNN_sequence_Model
 import RNN_models, CNN_models, AttentionModel
 import configparser
 import json
@@ -96,6 +96,20 @@ def bpnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_s
     print('bpnn_model test over\n')
     return
 
+def knn_exams(data, training_sample_ids, test_sample_ids):
+    print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
+    print('knn_model test start')
+    start_time = time.time()
+    knn = KNN_sequence_Model.KNN_Sequence()
+    # knn.train(data['features'], data['labels'], training_sample_ids, data['samples_length'])
+    knn.test_cpu(data['features'], data['labels'], test_sample_ids[-10000:], data['samples_length'], 100)
+
+    print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
+    end_time = time.time()
+    print('cost time %f' % (end_time - start_time))
+    print('knn_model test over\n')
+    return
+
 
 if __name__ == '__main__':
     common_para = configparser.ConfigParser()
@@ -142,3 +156,6 @@ if __name__ == '__main__':
     # traditional ways
     # BPNN exams
     bpnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids)
+
+    # KNN exams
+    knn_exams(data, training_sample_ids, test_sample_ids)
