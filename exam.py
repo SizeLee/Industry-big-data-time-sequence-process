@@ -6,7 +6,7 @@ import json
 import time
 
 
-def rnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, cell_type):
+def rnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, cell_type, random_seed=None):
     print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
     print('%s_model test start' % cell_type)
 
@@ -18,7 +18,7 @@ def rnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sa
     # lstm.save_model('./model/rnn_model')
     start_time = time.time()
     model.train_v2(data['features'], data['labels'], data['samples_length'], 1, 1024, training_sample_ids,
-                   test_sample_ids, foresight_steps=0, reset_flag=True)
+                   test_sample_ids, foresight_steps=0, reset_flag=True, random_seed=random_seed)
     end_time = time.time()
     print('cost training time %f' % (end_time - start_time))
     model.test_v2(data['features'], data['labels'], data['samples_length'], test_sample_ids)
@@ -31,7 +31,7 @@ def rnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sa
     return
 
 
-def cnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids):
+def cnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, random_seed=None):
     print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
     print('cnn_model test start')
 
@@ -42,7 +42,7 @@ def cnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sa
     # cnn.save_model('./model/cnn_model')
     start_time = time.time()
     cnn.train_v2(data['features'], data['labels'], data['samples_length'], 1, 1024, training_sample_ids, test_sample_ids,
-                 foresight_steps=0, reset_flag=True, record_flag=True)
+                 foresight_steps=0, reset_flag=True, record_flag=True, random_seed=random_seed)
     end_time = time.time()
     print('cost training time %f' % (end_time - start_time))
     cnn.test_v2(data['features'], data['labels'], data['samples_length'], test_sample_ids)
@@ -55,7 +55,7 @@ def cnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sa
     return
 
 
-def atn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids):
+def atn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, random_seed=None):
     print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
     print('atn_model test start')
 
@@ -66,8 +66,8 @@ def atn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sa
     # atn.test(data['features'], data['labels'], test_sample_ids)
     # atn.save_model('./model/atn_model_new')
     start_time = time.time()
-    atn.train_v2(data['features'], data['labels'], data['samples_length'], 2, 1024, training_sample_ids, test_sample_ids,
-                 foresight_steps=0, reset_flag=True, record_flag=True)
+    atn.train_v2(data['features'], data['labels'], data['samples_length'], 1, 1024, training_sample_ids, test_sample_ids,
+                 foresight_steps=0, reset_flag=True, record_flag=True, random_seed=random_seed)
     end_time = time.time()
     print('cost training time %f' % (end_time - start_time))
     atn.test_v2(data['features'], data['labels'], data['samples_length'], test_sample_ids)
@@ -79,7 +79,7 @@ def atn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sa
     return
 
 
-def bpnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids):
+def bpnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, random_seed=None):
     print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
     print('bpnn_model test start')
 
@@ -91,7 +91,7 @@ def bpnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_s
     # bpnn.save_model('./model/bpnn_model')
     start_time = time.time()
     bpnn.train_v2(data['features'], data['labels'], data['samples_length'], 1, 1024, training_sample_ids, test_sample_ids,
-                  foresight_steps=0, reset_flag=True, record_flag=True)
+                  foresight_steps=0, reset_flag=True, record_flag=True, random_seed=random_seed)
     end_time = time.time()
     print('cost training time %f' % (end_time - start_time))
     bpnn.test_v2(data['features'], data['labels'], data['samples_length'], test_sample_ids)
@@ -123,6 +123,7 @@ if __name__ == '__main__':
     sequence_fix_length = common_para['common_parameters'].getint('sequence_fix_length')
     foresight_steps = common_para['common_parameters'].getint('foresight_steps')
     class_num = common_para['common_parameters'].getint('class_num')
+    random_seed = common_para['common_parameters'].getint('random_seed')
 
     data = np.load(common_para['path']['data_file'])
     # print(data['features'])
@@ -145,23 +146,23 @@ if __name__ == '__main__':
 
     # rnn exams
     # lstm
-    rnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, 'lstm')
+    rnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, 'lstm', random_seed)
 
     # gru
-    rnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, 'gru')
+    rnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, 'gru', random_seed)
 
     # sru
-    rnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, 'sru')
+    rnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, 'sru', random_seed)
 
     # cnn exams
-    cnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids)
+    cnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, random_seed)
 
     # attention net exams
-    atn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids)
+    atn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, random_seed)
 
     # traditional ways
     # BPNN exams
-    bpnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids)
+    bpnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, random_seed)
 
     # KNN exams
     knn_exams(data, training_sample_ids, test_sample_ids)

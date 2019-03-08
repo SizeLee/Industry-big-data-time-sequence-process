@@ -32,53 +32,52 @@ class OnlyAttention:
         return
 
     def _build_network(self):
-        with tf.name_scope('input'):
-            with tf.variable_scope('input'):
-                self.input = tf.placeholder(shape=[None, self.sequence_length, self.input_size],
-                                            dtype=self.dtype, name='input_sequence')
-                # shape = [sample, sequence_length, feature_num]
+        with tf.variable_scope('input'):
+            self.input = tf.placeholder(shape=[None, self.sequence_length, self.input_size],
+                                        dtype=self.dtype, name='input_sequence')
+            # shape = [sample, sequence_length, feature_num]
 
-            layer_input = self.input
+        layer_input = self.input
 
-            position_embedding = self._position_embedding(self.sequence_length, self.input_size, 'pre_process_layer')
-            # position_embedding = self._position_embedding_v2(self.sequence_length, self.input_size, 'pre_process_layer')
-            layer_input = self.input + position_embedding
-            self.check = position_embedding
+        position_embedding = self._position_embedding(self.sequence_length, self.input_size, 'pre_process_layer')
+        # position_embedding = self._position_embedding_v2(self.sequence_length, self.input_size, 'pre_process_layer')
+        layer_input = self.input + position_embedding
+        self.check = position_embedding
 
-            with tf.name_scope('cnn_layers'):
-                layer_out = layer_input
-                conv_layers_num = self.network_hyperparameter['cnn_layers_num']
-                for i in range(conv_layers_num):
-                    layer_out = self._cnn_layer(i + 1, layer_out, self.network_hyperparameter)
+        with tf.name_scope('cnn_layers'):
+            layer_out = layer_input
+            conv_layers_num = self.network_hyperparameter['cnn_layers_num']
+            for i in range(conv_layers_num):
+                layer_out = self._cnn_layer(i + 1, layer_out, self.network_hyperparameter)
 
-            layer_input = layer_out
+        layer_input = layer_out
 
-            with tf.name_scope('encoder_layers'):
-                encoder_num = self.network_hyperparameter['encoder_num']
-                for i in range(encoder_num):
-                    layer_out = self._attention_encoder_layer(layer_input, 'encoder_%d' % (i+1),
-                                                        self.network_hyperparameter['encoders']['encoder_%d' % (i+1)])
-                    layer_input = layer_out
+        with tf.name_scope('encoder_layers'):
+            encoder_num = self.network_hyperparameter['encoder_num']
+            for i in range(encoder_num):
+                layer_out = self._attention_encoder_layer(layer_input, 'encoder_%d' % (i+1),
+                                                    self.network_hyperparameter['encoders']['encoder_%d' % (i+1)])
+                layer_input = layer_out
 
-            linear_out = layer_out  # because summarizer attention layer return linear out
+        linear_out = layer_out  # because summarizer attention layer return linear out
 
-            with tf.name_scope('training_and_judging'):
-                self.y = tf.placeholder(shape=[None, self.class_num], dtype=self.dtype, name='labels')
-                self.weight_matrix = tf.placeholder(shape=[None, 1], dtype=self.dtype, name='weight_matrix')
-                # print(tf.nn.softmax_cross_entropy_with_logits(logits=linear_out, labels=self.y).shape)
-                # print((tf.nn.softmax_cross_entropy_with_logits(logits=linear_out, labels=self.y)
-                #        * tf.reshape(self.weight_matrix, [-1])).shape)
-                self.loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=linear_out, labels=self.y)
-                                          * tf.reshape(self.weight_matrix, [-1]))
-                self.learning_rate = tf.placeholder(dtype=self.dtype, name='learning_rate')
-                optimizer = tf.train.AdamOptimizer(self.learning_rate)  # learning rate could be adjust
-                self.train_step = optimizer.minimize(self.loss)
-                self.accuracy = tf.reduce_mean(
-                    tf.cast(tf.equal(self.predict, tf.argmax(self.y, axis=1)), dtype=self.dtype))
+        with tf.name_scope('training_and_judging'):
+            self.y = tf.placeholder(shape=[None, self.class_num], dtype=self.dtype, name='labels')
+            self.weight_matrix = tf.placeholder(shape=[None, 1], dtype=self.dtype, name='weight_matrix')
+            # print(tf.nn.softmax_cross_entropy_with_logits(logits=linear_out, labels=self.y).shape)
+            # print((tf.nn.softmax_cross_entropy_with_logits(logits=linear_out, labels=self.y)
+            #        * tf.reshape(self.weight_matrix, [-1])).shape)
+            self.loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=linear_out, labels=self.y)
+                                      * tf.reshape(self.weight_matrix, [-1]))
+            self.learning_rate = tf.placeholder(dtype=self.dtype, name='learning_rate')
+            optimizer = tf.train.AdamOptimizer(self.learning_rate)  # learning rate could be adjust
+            self.train_step = optimizer.minimize(self.loss)
+            self.accuracy = tf.reduce_mean(
+                tf.cast(tf.equal(self.predict, tf.argmax(self.y, axis=1)), dtype=self.dtype))
 
-                self.batch_loss_summary = tf.summary.scalar('batch_loss', self.loss)
-                self.batch_accuracy_summary = tf.summary.scalar('batch_accuracy', self.accuracy)
-                self.batch_summary = tf.summary.merge([self.batch_loss_summary, self.batch_accuracy_summary])
+            self.batch_loss_summary = tf.summary.scalar('batch_loss', self.loss)
+            self.batch_accuracy_summary = tf.summary.scalar('batch_accuracy', self.accuracy)
+            self.batch_summary = tf.summary.merge([self.batch_loss_summary, self.batch_accuracy_summary])
 
         return
 
@@ -119,7 +118,11 @@ class OnlyAttention:
 
     def train_v2(self, data, labels, samples_length, epoches, batch_size, train_set_sample_ids, test_set_ids,
                  learning_rate=0.001, foresight_steps=None, reset_flag=False, record_flag=True,
-                 log_dir='./data/log/cnn_models'):
+                 log_dir='./data/log/cnn_models', random_seed=None):
+
+        if random_seed is not None:
+            random.seed(random_seed)
+
         if reset_flag:
             self.sess.run(self.initializer)
         if foresight_steps is not None:

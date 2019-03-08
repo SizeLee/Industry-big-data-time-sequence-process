@@ -170,7 +170,11 @@ class BPNN:
 
     def train_v2(self, data, labels, samples_length, epoches, batch_size, train_set_sample_ids, test_set_ids,
                  learning_rate=0.001, foresight_steps=None, reset_flag=False, record_flag=True,
-                 log_dir='./data/log/bpnn_models'):
+                 log_dir='./data/log/bpnn_models', random_seed=None):
+
+        if random_seed is not None:
+            random.seed(random_seed)
+
         if reset_flag:
             self.sess.run(self.initializer)
         if foresight_steps is not None:
