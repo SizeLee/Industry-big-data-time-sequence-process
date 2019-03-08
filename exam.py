@@ -9,22 +9,24 @@ import time
 def rnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, cell_type):
     print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
     print('%s_model test start' % cell_type)
-    start_time = time.time()
+
     model = RNN_models.FixedLengthRNN(sequence_fix_length, data['features'].shape[1],
                                      class_num=class_num, cell_type=cell_type)
     # lstm.train(data['features'], data['labels'], 1, 1024, training_sample_ids,
     #            foresight_steps=foresight_steps, reset_flag=True)
     # lstm.test(data['features'], data['labels'], test_sample_ids)
     # lstm.save_model('./model/rnn_model')
-
+    start_time = time.time()
     model.train_v2(data['features'], data['labels'], data['samples_length'], 1, 1024, training_sample_ids,
-                  foresight_steps=0, reset_flag=True)
+                   test_sample_ids, foresight_steps=0, reset_flag=True)
+    end_time = time.time()
+    print('cost training time %f' % (end_time - start_time))
     model.test_v2(data['features'], data['labels'], data['samples_length'], test_sample_ids)
     model.save_model('./model/%s_model_v2' % cell_type)
 
     print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
-    end_time = time.time()
-    print('cost time %f' % (end_time - start_time))
+
+    # print('cost time %f' % (end_time - start_time))
     print('%s_model test over\n' % cell_type)
     return
 
@@ -32,21 +34,23 @@ def rnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sa
 def cnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids):
     print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
     print('cnn_model test start')
-    start_time = time.time()
+
     cnn = CNN_models.ConvSequence2One(sequence_fix_length, data['features'].shape[1],
                                       class_num=class_num)
     # cnn.train(data['features'], data['labels'], 1, 1024, training_sample_ids)
     # cnn.test(data['features'], data['labels'], test_sample_ids)
     # cnn.save_model('./model/cnn_model')
-
-    cnn.train_v2(data['features'], data['labels'], data['samples_length'], 1, 1024, training_sample_ids,
-                 foresight_steps=0, reset_flag=True)
+    start_time = time.time()
+    cnn.train_v2(data['features'], data['labels'], data['samples_length'], 1, 1024, training_sample_ids, test_sample_ids,
+                 foresight_steps=0, reset_flag=True, record_flag=True)
+    end_time = time.time()
+    print('cost training time %f' % (end_time - start_time))
     cnn.test_v2(data['features'], data['labels'], data['samples_length'], test_sample_ids)
     cnn.save_model('./model/cnn_model_v2')
 
     print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
-    end_time = time.time()
-    print('cost time %f' % (end_time - start_time))
+
+    # print('cost time %f' % (end_time - start_time))
     print('cnn_model test over\n')
     return
 
@@ -54,22 +58,23 @@ def cnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sa
 def atn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids):
     print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
     print('atn_model test start')
-    start_time = time.time()
+
     atn = AttentionModel.OnlyAttention(sequence_fix_length, data['features'].shape[1], class_num=class_num,
                                        network_hyperparameters='./data/attention_network_hyperparameters_v2.json')
 
     # atn.train(data['features'], data['labels'], 1, 1024, training_sample_ids)
     # atn.test(data['features'], data['labels'], test_sample_ids)
     # atn.save_model('./model/atn_model_new')
-
-    atn.train_v2(data['features'], data['labels'], data['samples_length'], 2, 1024, training_sample_ids,
-                 foresight_steps=0, reset_flag=True)
+    start_time = time.time()
+    atn.train_v2(data['features'], data['labels'], data['samples_length'], 2, 1024, training_sample_ids, test_sample_ids,
+                 foresight_steps=0, reset_flag=True, record_flag=True)
+    end_time = time.time()
+    print('cost training time %f' % (end_time - start_time))
     atn.test_v2(data['features'], data['labels'], data['samples_length'], test_sample_ids)
     atn.save_model('./model/atn_model_v2')
 
     print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
-    end_time = time.time()
-    print('cost time %f' % (end_time - start_time))
+    # print('cost time %f' % (end_time - start_time))
     print('atn_model test over\n')
     return
 
@@ -77,22 +82,23 @@ def atn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sa
 def bpnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids):
     print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
     print('bpnn_model test start')
-    start_time = time.time()
+
     bpnn = BPNN_model.BPNN(sequence_fix_length, data['features'].shape[1], class_num=class_num)
 
     # bpnn.train(data['features'], data['labels'], 1, 4096, training_sample_ids,
     #            foresight_steps=foresight_steps, reset_flag=True)
     # bpnn.test(data['features'], data['labels'], test_sample_ids)
     # bpnn.save_model('./model/bpnn_model')
-
-    bpnn.train_v2(data['features'], data['labels'], data['samples_length'], 1, 1024, training_sample_ids,
-                  foresight_steps=0, reset_flag=True)
+    start_time = time.time()
+    bpnn.train_v2(data['features'], data['labels'], data['samples_length'], 1, 1024, training_sample_ids, test_sample_ids,
+                  foresight_steps=0, reset_flag=True, record_flag=True)
+    end_time = time.time()
+    print('cost training time %f' % (end_time - start_time))
     bpnn.test_v2(data['features'], data['labels'], data['samples_length'], test_sample_ids)
     bpnn.save_model('./model/bpnn_model_v2')
 
     print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
-    end_time = time.time()
-    print('cost time %f' % (end_time - start_time))
+    # print('cost time %f' % (end_time - start_time))
     print('bpnn_model test over\n')
     return
 

@@ -19,6 +19,7 @@ class BPNN:
 
         with self.graph.as_default():
             self._build_NN()
+            self._build_summary_node()
             self.initializer = tf.global_variables_initializer()
             self.sess.run(self.initializer)
 
@@ -53,6 +54,10 @@ class BPNN:
             self.train_step = optimizer.minimize(self.loss)
             self.accuracy = tf.reduce_mean(tf.cast(tf.equal(self.predict, tf.argmax(self.y, axis=1)), dtype=self.dtype))
 
+            self.batch_loss_summary = tf.summary.scalar('batch_loss', self.loss)
+            self.batch_accuracy_summary = tf.summary.scalar('batch_accuracy', self.accuracy)
+            self.batch_summary = tf.summary.merge([self.batch_loss_summary, self.batch_accuracy_summary])
+
         return
 
     def save_model(self, save_dir, global_step=None):
@@ -66,6 +71,14 @@ class BPNN:
             saver = tf.train.Saver()
             saver.restore(self.sess, load_dir+'/model.ckpt')
         return
+
+    def _build_summary_node(self):
+        with tf.name_scope('summary_node'):
+            self.whole_loss_node = tf.placeholder(tf.float32)
+            self.whole_loss_summary = tf.summary.scalar('whole_loss', self.whole_loss_node)
+            self.whole_accuracy_node = tf.placeholder(tf.float32)
+            self.whole_accuracy_summary = tf.summary.scalar('whole_accuracy', self.whole_accuracy_node)
+            self.whole_summary = tf.summary.merge([self.whole_loss_summary, self.whole_accuracy_summary])
 
     def _dense_layer(self, layer_name, layer_input, layer_out_size, activation_func='relu'):
         with tf.name_scope(layer_name):
@@ -155,8 +168,9 @@ class BPNN:
 
         return  # 'one epoch done'
 
-    def train_v2(self, data, labels, samples_length, epoches, batch_size, train_set_sample_ids, learning_rate=0.001,
-                 foresight_steps=None, reset_flag=False):
+    def train_v2(self, data, labels, samples_length, epoches, batch_size, train_set_sample_ids, test_set_ids,
+                 learning_rate=0.001, foresight_steps=None, reset_flag=False, record_flag=True,
+                 log_dir='./data/log/bpnn_models'):
         if reset_flag:
             self.sess.run(self.initializer)
         if foresight_steps is not None:
@@ -166,22 +180,54 @@ class BPNN:
                 print('Wrong format of value of variable foresight_steps')
                 pass
 
+        train_writer = tf.summary.FileWriter(log_dir + '/train', self.sess.graph)
+        test_writer = tf.summary.FileWriter(log_dir + '/test')
+
+        step_count = 0
         for i in range(epoches):
             print('epoch%d:' % i)
             data_set = self._data_generator_v2(data, labels, self.sequence_length, samples_length, batch_size,
                                                train_set_sample_ids)
             for batch_data, batch_label, weight in data_set:
                 # print(weight)
-                loss, _ = self.sess.run([self.loss, self.train_step],
-                                        feed_dict={self.input: batch_data, self.y: batch_label,
-                                                   self.learning_rate: learning_rate,
-                                                   self.weight_matrix: weight})
-                print(loss)
+                loss, _, batch_summary = self.sess.run([self.loss, self.train_step, self.batch_summary],
+                                                       feed_dict={self.input: batch_data, self.y: batch_label,
+                                                                  self.learning_rate: learning_rate,
+                                                                  self.weight_matrix: weight})
+                print('step%d: %f' % (step_count, loss))
+                # print(check)
+                if record_flag:
+                    train_writer.add_summary(batch_summary, global_step=step_count)
+
+                if step_count % 100 == 0 and record_flag:
+                    self._whole_summary_write(train_writer, step_count, data, labels, samples_length, batch_size,
+                                              train_set_sample_ids)
+
+                    self._whole_summary_write(test_writer, step_count, data, labels, samples_length, batch_size,
+                                              test_set_ids)
+
+                step_count += 1
             print()
             # self.sess.run(self.accuracy, feed_dict={})
-        accuracy = self._cal_accuracy_v2(data, labels, samples_length, batch_size, train_set_sample_ids)
+        if record_flag:
+            accuracy = self._whole_summary_write(train_writer, step_count, data, labels, samples_length, batch_size,
+                                             train_set_sample_ids)
+
+            self._whole_summary_write(test_writer, step_count, data, labels, samples_length, batch_size, test_set_ids)
+        else:
+            accuracy, _ = self._cal_accuracy_and_loss_v2(data, labels, samples_length, batch_size, train_set_sample_ids)
         print('accuracy on training set: %f' % accuracy)
+        train_writer.close()
+        test_writer.close()
         return
+
+    def _whole_summary_write(self, writer, step, data, labels, samples_length, batch_size, data_set_sample_ids):
+        w_accuracy, w_loss = self._cal_accuracy_and_loss_v2(data, labels, samples_length, batch_size,
+                                                            data_set_sample_ids)
+        whole_summary = self.sess.run(self.whole_summary, feed_dict={self.whole_accuracy_node: w_accuracy,
+                                                                     self.whole_loss_node: w_loss})
+        writer.add_summary(whole_summary, global_step=step)
+        return w_accuracy
 
     def test_v2(self, data, label, samples_length, test_set_sample_ids=None, batch_size=1024, data_set_name='test set'):
         accuracy = self._cal_accuracy_v2(data, label, samples_length, batch_size, test_set_sample_ids)
@@ -198,6 +244,23 @@ class BPNN:
                                                              feed_dict={self.input: batch_data, self.y: batch_label})
         accuracy /= batch_count
         return accuracy
+
+    def _cal_accuracy_and_loss_v2(self, data, labels, samples_length, batch_size, sample_ids=None):
+        data_set = self._data_generator_v2(data, labels, self.sequence_length, samples_length, batch_size, sample_ids)
+        sample_count = 0
+        accuracy = 0.
+        loss = 0.
+        for batch_data, batch_label, weight in data_set:
+            sample_count += batch_label.shape[0]
+            b_ac, b_loss = self.sess.run([self.accuracy, self.loss],
+                                         feed_dict={self.input: batch_data, self.y: batch_label,
+                                                    self.weight_matrix: weight})
+            accuracy += batch_label.shape[0] * b_ac
+            loss += batch_label.shape[0] * b_loss
+
+        accuracy /= sample_count
+        loss /= sample_count
+        return accuracy, loss
 
     def _data_generator_v2(self, data, labels, max_length, samples_length, batch_size, sample_ids=None):
         if sample_ids is None:
