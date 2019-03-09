@@ -2,6 +2,7 @@ import numpy as np
 import tensorflow as tf
 import json
 import random
+import time
 
 
 class FixedLengthRNN:
@@ -305,3 +306,31 @@ class FixedLengthRNN:
             yield batch_data, batch_label
 
         return  # 'one epoch done'
+
+    def test_time(self, data, labels, sample_length, test_set_ids, save_dir='./data/confusion_matrix/rnn'):
+        whole_time, y_true, y_predict = self._get_test_result_and_running_time(data, labels, sample_length, 1024,
+                                                                               test_set_ids)
+        np.savez(save_dir + '/%s_predict.npz' % self.cell_type, y_predict=y_predict, y_true=y_true)
+        return whole_time
+
+    def _get_test_result_and_running_time(self, data, labels, samples_length, batch_size, sample_ids=None):
+        data_set = self._data_generator_v2(data, labels, self.fixed_length, samples_length, batch_size, sample_ids)
+        y_true = []
+        y_predict = []
+        whole_time = 0.
+        for batch_data, batch_label in data_set:
+            b_true = np.argmax(batch_label, axis=1)
+            start = time.time()
+            b_pre = self.sess.run([self.predict], feed_dict={self.input: batch_data, self.y: batch_label})
+            end = time.time()
+            whole_time += end - start
+            b_pre = b_pre.reshape([-1])
+            y_true.append(b_true)
+            y_predict.append(b_pre)
+
+        y_true = np.concatenate(y_true)
+        y_predict = np.concatenate(y_predict)
+
+        return whole_time, y_true, y_predict
+
+
