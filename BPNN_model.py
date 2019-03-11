@@ -307,7 +307,8 @@ class BPNN:
         for batch_data, batch_label, _ in data_set:
             b_true = np.argmax(batch_label, axis=1)
             start = time.time()
-            b_pre = self.sess.run([self.predict], feed_dict={self.input: batch_data, self.y: batch_label})
+            b_pre = self.sess.run(self.predict, feed_dict={self.input: batch_data, self.y: batch_label})
+            b_pre = b_pre.reshape([-1])
             end = time.time()
             whole_time += end - start
             y_true.append(b_true)
