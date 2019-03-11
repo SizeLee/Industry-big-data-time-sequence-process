@@ -94,17 +94,37 @@ class  Confusion_matrix_painter:
 
         return
 
+    def cal_f_beta(self, y_predict, y_true, recall_weight_on_precision=1):
+        cm = confusion_matrix(y_true, y_predict)
+        class_num = cm.shape[0]
+        recall_matrix = cm.astype('float') / cm.sum(axis=1, keepdims=True)
+        precision_matrix = cm.astype('float') / cm.sum(axis=0, keepdims=True)
+        f = 0.
+        recall_weight = 1 - 1/(1 + recall_weight_on_precision**2)
+        for i in range(class_num):
+            f += recall_weight * 1/recall_matrix[i, i] + (1-recall_weight) * 1/precision_matrix[i, i]
+        f /= class_num
+        f_score = 1/f
+        return f_score
+
 if __name__ == '__main__':
     common_para = configparser.ConfigParser()
     common_para.read('common_para.ini')
     confusion_matrix_file_path = common_para['path']['confusion_matrix_path']
     class_num = common_para['common_parameters'].getint('class_num')
+    f_beta = common_para['common_parameters'].getfloat('f_beta')
     dir_name = os.listdir(confusion_matrix_file_path)
     painter = Confusion_matrix_painter()
+    f_str = ''
     for each_dir in dir_name:
         each_complete_dir = confusion_matrix_file_path + each_dir + '/'
+        if not os.path.isdir(each_complete_dir):
+            continue
         file_name = os.listdir(each_complete_dir)
         for each_file in file_name:
+            if each_file[-4:] != '.npz':
+                continue
+
             file = each_complete_dir + each_file
             pre_and_labels = np.load(file)
             # new_y_predict = pre_and_labels['y_predict'].reshape([-1])
@@ -115,6 +135,12 @@ if __name__ == '__main__':
                                   save_dir=each_complete_dir)
             painter.plot_and_save_normalized(pre_and_labels['y_predict'], pre_and_labels['y_true'], class_num,
                                              title_name, save_dir=each_complete_dir)
+            f_score = painter.cal_f_beta(pre_and_labels['y_predict'], pre_and_labels['y_true'],
+                                         recall_weight_on_precision=f_beta)
+            f_str += '%s f1 score is %f\n' % (title_name, f_score)
+
+    with open(confusion_matrix_file_path + 'f1.txt', 'w+') as file:
+        file.write(f_str)
 
 
 
