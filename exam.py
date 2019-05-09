@@ -146,6 +146,9 @@ if __name__ == '__main__':
     # print(data['features'])
     # print(data['labels'])
     # print(data['samples_length'])
+    print(data['features'].shape)
+    print(data['labels'].shape)
+    print(data['samples_length'].shape)
 
     ### generate training samples' id
     # sample_num = data['labels'].shape[0]
@@ -160,36 +163,38 @@ if __name__ == '__main__':
     test_sample_ids = data_set_ids['test_set']
     # training_sample_ids = list(map(int, data_set_ids['training_set']))
     # test_sample_ids = list(map(int, data_set_ids['test_set']))
+    print(type(training_sample_ids), type(test_sample_ids))
 
-    time_str = ''
-    # rnn exams
-    # lstm
-    tstr = rnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, 'lstm', random_seed)
-    time_str += tstr
-
-    # gru
-    tstr = rnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, 'gru', random_seed)
-    time_str += tstr
-
-    # sru
-    tstr = rnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, 'sru', random_seed)
-    time_str += tstr
-
-    # cnn exams
-    tstr = cnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, random_seed)
-    time_str += tstr
-
-    # attention net exams
-    tstr = atn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, random_seed)
-    time_str += tstr
-
-    # traditional ways
-    # BPNN exams
-    tstr = bpnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, random_seed)
-    time_str += tstr
-
-    with open('./data/time_cost.txt', 'w+') as file:
-        file.write(time_str)
+    # time_str = ''
+    # # rnn exams
+    # # lstm
+    # tstr = rnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, 'lstm', random_seed)
+    # time_str += tstr
+    #
+    # # gru
+    # tstr = rnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, 'gru', random_seed)
+    # time_str += tstr
+    #
+    # # sru
+    # tstr = rnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, 'sru', random_seed)
+    # time_str += tstr
+    #
+    # # cnn exams
+    # tstr = cnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, random_seed)
+    # time_str += tstr
+    #
+    # # attention net exams
+    # tstr = atn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, random_seed)
+    # time_str += tstr
+    #
+    # # traditional ways
+    # # BPNN exams
+    # tstr = bpnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, random_seed)
+    # time_str += tstr
+    #
+    # with open('./data/time_cost.txt', 'w+') as file:
+    #     file.write(time_str)
 
     # # KNN exams
     # knn_exams(data, training_sample_ids, test_sample_ids)
+
