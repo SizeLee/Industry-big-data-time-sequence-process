@@ -146,9 +146,9 @@ if __name__ == '__main__':
     # print(data['features'])
     # print(data['labels'])
     # print(data['samples_length'])
-    print(data['features'].shape)
-    print(data['labels'].shape)
-    print(data['samples_length'].shape)
+    # print(data['features'].shape)
+    # print(data['labels'].shape)
+    # print(data['samples_length'].shape)
 
     ### generate training samples' id
     # sample_num = data['labels'].shape[0]
@@ -163,9 +163,9 @@ if __name__ == '__main__':
     test_sample_ids = data_set_ids['test_set']
     # training_sample_ids = list(map(int, data_set_ids['training_set']))
     # test_sample_ids = list(map(int, data_set_ids['test_set']))
-    print(type(training_sample_ids), type(test_sample_ids))
+    # print(type(training_sample_ids), type(test_sample_ids))
 
-    # time_str = ''
+    time_str = ''
     # # rnn exams
     # # lstm
     # tstr = rnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, 'lstm', random_seed)
@@ -183,9 +183,9 @@ if __name__ == '__main__':
     # tstr = cnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, random_seed)
     # time_str += tstr
     #
-    # # attention net exams
-    # tstr = atn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, random_seed)
-    # time_str += tstr
+    # attention net exams
+    tstr = atn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, random_seed)
+    time_str += tstr
     #
     # # traditional ways
     # # BPNN exams

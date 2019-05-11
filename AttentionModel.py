@@ -7,7 +7,7 @@ import time
 
 class OnlyAttention:
     def __init__(self, fixed_length, input_size, class_num, foresight_steps=0,
-                 network_hyperparameters='./data/attention_network_hyperparameters.json'):
+                 network_hyperparameters='./data/attention_network_hyperparameters_v2.json'):
         self.graph = tf.Graph()
         self.sess = tf.Session(graph=self.graph)
 
@@ -229,8 +229,12 @@ class OnlyAttention:
                     layer_out = fa
 
             elif attention_type.lower() == 'suma':
+                if 'query_num' in net_structure:
+                    query_num = net_structure['query_num']
+                else:
+                    query_num = 1
                 suma = self._summarize_attention(layer_input, layer_input,
-                                                 'summarizer_attention', net_structure['attention_layer'])
+                                                 'summarizer_attention', net_structure['attention_layer'], query_num)
                 if net_structure['attention_layer']['residual_flag'].lower() == 'true':
                     layer_out = suma + layer_input
                 else:
@@ -418,14 +422,15 @@ class OnlyAttention:
 
         return output  # output shape [sample, fixed_length, output_size]
 
-    def _summarize_attention(self, k, v, layer_name, net_structure):
+    def _summarize_attention(self, k, v, layer_name, net_structure, query_num=1):
+        # todo add more query vectors
         head_num = net_structure['head_num']
         head_size = net_structure['head_size']
         sequence_length = k.shape[1]
         sample_num = tf.shape(k)[0]
         with tf.variable_scope(layer_name):
-            q = tf.get_variable('q', shape=[1, k.shape[-1]], dtype=self.dtype,
-                                initializer=tf.ones_initializer())
+            q = tf.get_variable('q', shape=[query_num, k.shape[-1]], dtype=self.dtype,
+                                initializer=tf.random_normal_initializer(stddev=0.5))
             k = tf.reshape(k, [-1, k.shape[-1]], name='reshape_k')
             v = tf.reshape(v, [-1, v.shape[-1]], name='reshape_v')
 
@@ -443,17 +448,17 @@ class OnlyAttention:
                 q = tf.matmul(q, linear_project_qw)
                 k = tf.matmul(k, linear_project_kw)
                 v = tf.matmul(v, linear_project_vw)
-                q = tf.tile(tf.expand_dims(q, axis=0), [sample_num, 1, 1])  # [sample, 1, head_size*head_num]
+                q = tf.tile(tf.expand_dims(q, axis=0), [sample_num, 1, 1])  # [sample, query_num, head_size*head_num]
                 k = tf.reshape(k, [-1, sequence_length, k.shape[-1]])
                 v = tf.reshape(v, [-1, sequence_length, v.shape[-1]])
 
             with tf.name_scope('summarizer_attention'):
-                q = tf.concat(tf.split(q, head_num, axis=2), axis=0)  # [sample*head_num, 1, head_size]
+                q = tf.concat(tf.split(q, head_num, axis=2), axis=0)  # [sample*head_num, query_num, head_size]
                 k = tf.concat(tf.split(k, head_num, axis=2), axis=0)  # [sample*head_num, fixed_length, head_size]
                 v = tf.concat(tf.split(v, head_num, axis=2), axis=0)  # [sample*head_num, fixed_length, head_size]
                 attention = tf.matmul(q, tf.transpose(k, [0, 2, 1])) / (head_size ** 0.5)
                 attention = tf.nn.softmax(attention, axis=2, name='attention')
-                attention_v = tf.matmul(attention, v)  # [sample*head_num, 1, head_size]
+                attention_v = tf.matmul(attention, v)  # [sample*head_num, query_num, head_size]
                 # new_vs = []
                 # for i in range(head_num):
                 #     temp_q = q[:, :, i*head_size: (i+1)*head_size]
@@ -466,7 +471,7 @@ class OnlyAttention:
 
             with tf.name_scope('concat_linear_project'):
                 # concat = tf.concat(new_vs, axis=2)
-                concat = tf.concat(tf.split(attention_v, head_num, axis=0), axis=2)  # [sample, 1, head_num*head_size]
+                concat = tf.concat(tf.split(attention_v, head_num, axis=0), axis=2)  # [sample, query_num, head_num*head_size]
                 output_size = net_structure['output_size']  # d_model
                 w = tf.get_variable('linear_project_concat', shape=[concat.shape[-1], output_size],
                                                dtype=self.dtype,
@@ -474,9 +479,9 @@ class OnlyAttention:
                 output = tf.reshape(tf.matmul(tf.reshape(concat,
                                                          [-1, concat.shape[-1]]),
                                               w),
-                                    [-1, output_size])
+                                    [-1, query_num, output_size])
 
-        return output  # output shape [sample, output_size]
+        return output  # output shape [sample, query_num, output_size]
 
     def _position_wise_dense_layer(self, layer_input, layer_name, network_structure):
         w1_size = network_structure['w1_size']
