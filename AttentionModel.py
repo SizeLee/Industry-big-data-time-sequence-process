@@ -5,7 +5,7 @@ import random
 import time
 
 
-class OnlyAttention:
+class CNN_Attention:
     def __init__(self, fixed_length, input_size, class_num, foresight_steps=0,
                  network_hyperparameters='./data/attention_network_hyperparameters_v2.json'):
         self.graph = tf.Graph()
@@ -698,4 +698,4 @@ class OnlyAttention:
         return whole_time, y_true, y_predict
 
 if __name__ == '__main__':
-    oa = OnlyAttention(30, 2, 4, 3)
+    cnn_a = CNN_Attention(30, 2, 4, 3)

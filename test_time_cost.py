@@ -51,7 +51,7 @@ def atn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sa
     print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
     print('atn_model time test start')
 
-    atn = AttentionModel.OnlyAttention(sequence_fix_length, data['features'].shape[1], class_num=class_num,
+    atn = AttentionModel.CNN_Attention(sequence_fix_length, data['features'].shape[1], class_num=class_num,
                                        network_hyperparameters='./data/attention_network_hyperparameters_v2.json')
 
     atn.load_model('./model/atn_model_v2')
