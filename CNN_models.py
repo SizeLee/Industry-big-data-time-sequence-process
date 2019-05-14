@@ -143,6 +143,12 @@ class ConvSequence2One:
                 # illegal input string will be treat as linear
         return out, linear_out
 
+    def _dropout(self, layer_input, dropout_rate, is_training):
+        return tf.layers.dropout(layer_input, dropout_rate, training=is_training)
+
+    def _batch_norm(self, layer_input, is_training):
+        return tf.layers.batch_normalization(layer_input, training=is_training)
+
     def train(self, data, labels, epoches, batch_size, train_set_sample_ids, learning_rate=0.001,
               foresight_steps=None, reset_flag=False):
         if reset_flag:

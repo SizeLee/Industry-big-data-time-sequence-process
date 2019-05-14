@@ -584,6 +584,12 @@ class CNN_Attention:
 
         return signal
 
+    def _dropout(self, layer_input, dropout_rate, is_training):
+        return tf.layers.dropout(layer_input, dropout_rate, training=is_training)
+
+    def _batch_norm(self, layer_input, is_training):
+        return tf.layers.batch_normalization(layer_input, training=is_training)
+
     def _cal_accuracy(self, data, labels, batch_size, sample_ids=None):
         data_set = self._data_generator(data, labels, self.sequence_length, batch_size, sample_ids)
         batch_count = 0
