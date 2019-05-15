@@ -9,7 +9,11 @@ class BPNN:
     def __init__(self, fixed_length, input_size, class_num, foresight_steps=0,
                  network_hyperparameters='./data/bpnn_network_hyperparameters.json'):
         self.graph = tf.Graph()
-        self.sess = tf.Session(graph=self.graph)
+
+        tf_config = tf.ConfigProto()
+        tf_config.gpu_options.allow_growth = True
+
+        self.sess = tf.Session(graph=self.graph, config=tf_config)
         self.sequence_length = fixed_length
         self.input_size = input_size
         self.class_num = class_num

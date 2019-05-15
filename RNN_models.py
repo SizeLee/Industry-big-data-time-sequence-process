@@ -10,7 +10,9 @@ class FixedLengthRNN:
                  network_hyperparameters='./data/network_hyperparameters.json'):
         self.fixed_length = fixed_length
         self.graph = tf.Graph()
-        self.sess = tf.Session(graph=self.graph)
+        tf_config = tf.ConfigProto()
+        tf_config.gpu_options.allow_growth = True
+        self.sess = tf.Session(graph=self.graph, config=tf_config)
         self.input_size = input_size
         self.cell_type = cell_type  ## lstm, gru, sru
         self.dtype = tf.float32

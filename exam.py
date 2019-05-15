@@ -1,6 +1,6 @@
 import numpy as np
 import BPNN_model, KNN_sequence_Model
-import RNN_models, CNN_models, AttentionModel
+import RNN_models, CNN_models, AttentionModel, Incremental_Learning_models
 import configparser
 import json
 import time
@@ -91,6 +91,38 @@ def atn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sa
     print('atn_model test over\n')
     return whole_time_on_test_str
 
+def incremental_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, incremental_sample_ids, random_seed=None):
+    print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
+    print('incremental_model test start')
+
+    incre_cnn_a = Incremental_Learning_models.Incremental_CNN_Attention(sequence_fix_length, data['features'].shape[1],
+                                                                        class_num=class_num,
+                                       network_hyperparameters='./data/attention_network_hyperparameters_v2.json',
+                                       incremental_net_hyperparameters='./data/Incremental_CNN_A.json')
+
+    incre_cnn_a.incremental_simulation(data['features'], data['labels'], data['samples_length'], 2, 1024,
+                                       training_sample_ids, test_sample_ids, incremental_sample_ids,
+                                       foresight_steps=0, reset_flag=True, record_flag=False, random_seed=random_seed)
+
+    # atn.train(data['features'], data['labels'], 1, 1024, training_sample_ids)
+    # atn.test(data['features'], data['labels'], test_sample_ids)
+    # atn.save_model('./model/atn_model_new')
+    # start_time = time.time()
+    # incre_cnn_a.train_v2(data['features'], data['labels'], data['samples_length'], 1, 1024, training_sample_ids, test_sample_ids,
+    #              foresight_steps=0, reset_flag=True, record_flag=True, random_seed=random_seed)
+    # end_time = time.time()
+    # print('cost training time %f' % (end_time - start_time))
+    # incre_cnn_a.test_v2(data['features'], data['labels'], data['samples_length'], test_sample_ids)
+    # incre_cnn_a.save_model('./model/atn_model_v2')
+    #
+    # whole_time_on_test = incre_cnn_a.test_time(data['features'], data['labels'], data['samples_length'], test_sample_ids)
+    # whole_time_on_test_str = 'sum_a_cnn time cost on predicting %d test samples: %fs\n' % (len(test_sample_ids),
+    #                                                                                  whole_time_on_test)
+    #
+    # print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
+    # # print('cost time %f' % (end_time - start_time))
+    # print('atn_model test over\n')
+    # return whole_time_on_test_str
 
 def bpnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, random_seed=None):
     print(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
@@ -184,8 +216,8 @@ if __name__ == '__main__':
     # time_str += tstr
     #
     # attention net exams
-    tstr = atn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, random_seed)
-    time_str += tstr
+    # tstr = atn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, random_seed)
+    # time_str += tstr
     #
     # # traditional ways
     # # BPNN exams
@@ -195,6 +227,15 @@ if __name__ == '__main__':
     # with open('./data/time_cost.txt', 'w+') as file:
     #     file.write(time_str)
 
+    # todo add dtw exams
     # # KNN exams
     # knn_exams(data, training_sample_ids, test_sample_ids)
+
+    # Incremental exams
+    with open(common_para['path']['data_set_incremental_ids_file'], 'r') as f:
+        data_set_ids = json.load(f)
+    training_sample_ids = data_set_ids['training_set']
+    test_sample_ids = data_set_ids['test_set']
+    incremental_sample_ids = data_set_ids['incremental_set']
+    incremental_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, incremental_sample_ids, random_seed)
 
