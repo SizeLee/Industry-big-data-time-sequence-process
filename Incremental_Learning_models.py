@@ -12,7 +12,8 @@ class Incremental_CNN_Attention:
         self.graph = tf.Graph()
 
         tf_config = tf.ConfigProto()
-        tf_config.gpu_options.allow_growth = True
+        # tf_config.gpu_options.allow_growth = True
+        tf_config.gpu_options.per_process_gpu_memory_fraction = 0.4
 
         self.sess = tf.Session(graph=self.graph, config=tf_config)
 
@@ -174,6 +175,7 @@ class Incremental_CNN_Attention:
 
                     # print('step%d: %f' % (step_count, loss))
                 # print(check)
+
                 if record_flag:
                     train_writer.add_summary(batch_summary, global_step=step_count)
 
@@ -185,6 +187,10 @@ class Incremental_CNN_Attention:
                                               test_set_ids, incre_flag)
 
                 step_count += 1
+
+            accuracy, loss = self._cal_accuracy_and_loss_v2(data, labels, samples_length, batch_size, train_set_sample_ids, incre_flag)
+            if loss < 0.1 and accuracy > 0.96:
+                break
             print()
             # self.sess.run(self.accuracy, feed_dict={})
 
@@ -740,7 +746,7 @@ class Incremental_CNN_Attention:
         # f_d = self._distribution_similarity_judge(origin_distribution, origin_distribution)
         # print(f_d)
 
-        distribution_difference_threshold = 0.23
+        distribution_difference_threshold = 0.6
         slide_window = 10000
         slide_step = 10000
         window_start = 0
@@ -753,7 +759,7 @@ class Incremental_CNN_Attention:
             print(f_d.mean(), f_d.max())
             if f_d.mean() > distribution_difference_threshold:
                 incre_flag = True
-                self.train_v2(data, labels, samples_length, 100, batch_size, new_data_ids,  None,
+                self.train_v2(data, labels, samples_length, 23, batch_size, new_data_ids,  None,
                       learning_rate=learning_rate, foresight_steps=foresight_steps, reset_flag=False,
                       record_flag=False, incre_flag=incre_flag, log_dir=log_dir, random_seed=random_seed)
                 # test_set_ids can be None when record_flag = False
@@ -762,6 +768,7 @@ class Incremental_CNN_Attention:
                 self.test_v2(data, labels, samples_length, new_data_ids, incre_flag=incre_flag,
                              data_set_name='1w start from %d sample' % window_start)
             window_start += slide_step
+            print()
 
         return
 

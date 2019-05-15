@@ -11,8 +11,8 @@ class CNN_Attention:
         self.graph = tf.Graph()
 
         tf_config = tf.ConfigProto()
-        tf_config.gpu_options.allow_growth = True
-        
+        # tf_config.gpu_options.allow_growth = True
+        tf_config.gpu_options.per_process_gpu_memory_fraction = 0.4
         self.sess = tf.Session(graph=self.graph, config=tf_config)
 
         self.sequence_length = fixed_length

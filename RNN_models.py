@@ -11,7 +11,8 @@ class FixedLengthRNN:
         self.fixed_length = fixed_length
         self.graph = tf.Graph()
         tf_config = tf.ConfigProto()
-        tf_config.gpu_options.allow_growth = True
+        # tf_config.gpu_options.allow_growth = True
+        tf_config.gpu_options.per_process_gpu_memory_fraction = 0.4
         self.sess = tf.Session(graph=self.graph, config=tf_config)
         self.input_size = input_size
         self.cell_type = cell_type  ## lstm, gru, sru
