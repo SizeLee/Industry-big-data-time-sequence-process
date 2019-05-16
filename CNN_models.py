@@ -11,7 +11,7 @@ class ConvSequence2One:
         self.graph = tf.Graph()
         tf_config = tf.ConfigProto()
         # tf_config.gpu_options.allow_growth = True
-        tf_config.gpu_options.per_process_gpu_memory_fraction = 0.4
+        tf_config.gpu_options.per_process_gpu_memory_fraction = 0.2
         self.sess = tf.Session(graph=self.graph, config=tf_config)
         self.sequence_length = fixed_length
         self.input_size = input_size
@@ -233,8 +233,9 @@ class ConvSequence2One:
                 print('Wrong format of value of variable foresight_steps')
                 pass
 
-        train_writer = tf.summary.FileWriter(log_dir + '/cnn/train', self.sess.graph)
-        test_writer = tf.summary.FileWriter(log_dir + '/cnn/test')
+        if record_flag:
+            train_writer = tf.summary.FileWriter(log_dir + '/cnn/train', self.sess.graph)
+            test_writer = tf.summary.FileWriter(log_dir + '/cnn/test')
 
         step_count = 0
         for i in range(epoches):
@@ -247,7 +248,7 @@ class ConvSequence2One:
                                                        feed_dict={self.input: batch_data, self.y: batch_label,
                                                                   self.learning_rate: learning_rate,
                                                                   self.weight_matrix: weight})
-                print('step%d: %f' % (step_count, loss))
+                # print('step%d: %f' % (step_count, loss))
                 # print(check)
                 if record_flag:
                     train_writer.add_summary(batch_summary, global_step=step_count)
@@ -271,8 +272,9 @@ class ConvSequence2One:
             accuracy, _ = self._cal_accuracy_and_loss_v2(data, labels, samples_length, batch_size, train_set_sample_ids)
 
         print('accuracy on training set: %f' % accuracy)
-        train_writer.close()
-        test_writer.close()
+        if record_flag:
+            train_writer.close()
+            test_writer.close()
         return
 
     def _whole_summary_write(self, writer, step, data, labels, samples_length, batch_size, data_set_sample_ids):

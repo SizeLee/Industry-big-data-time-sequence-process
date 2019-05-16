@@ -47,7 +47,7 @@ def cnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sa
     # cnn.save_model('./model/cnn_model')
     start_time = time.time()
     cnn.train_v2(data['features'], data['labels'], data['samples_length'], 1, 1024, training_sample_ids, test_sample_ids,
-                 foresight_steps=0, reset_flag=True, record_flag=True, random_seed=random_seed)
+                 foresight_steps=0, reset_flag=True, record_flag=False, random_seed=random_seed)
     end_time = time.time()
     print('cost training time %f' % (end_time - start_time))
     cnn.test_v2(data['features'], data['labels'], data['samples_length'], test_sample_ids)
@@ -76,7 +76,7 @@ def atn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sa
     # atn.save_model('./model/atn_model_new')
     start_time = time.time()
     atn.train_v2(data['features'], data['labels'], data['samples_length'], 1, 1024, training_sample_ids, test_sample_ids,
-                 foresight_steps=0, reset_flag=True, record_flag=True, random_seed=random_seed)
+                 foresight_steps=0, reset_flag=True, record_flag=False, random_seed=random_seed)
     end_time = time.time()
     print('cost training time %f' % (end_time - start_time))
     atn.test_v2(data['features'], data['labels'], data['samples_length'], test_sample_ids)
@@ -211,13 +211,13 @@ if __name__ == '__main__':
     # tstr = rnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, 'sru', random_seed)
     # time_str += tstr
     #
-    # # cnn exams
-    # tstr = cnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, random_seed)
-    # time_str += tstr
+    # cnn exams
+    tstr = cnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, random_seed)
+    time_str += tstr
     #
-    # attention net exams
-    # tstr = atn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, random_seed)
-    # time_str += tstr
+    # # attention net exams
+    tstr = atn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, random_seed)
+    time_str += tstr
     #
     # # traditional ways
     # # BPNN exams
@@ -232,10 +232,10 @@ if __name__ == '__main__':
     # knn_exams(data, training_sample_ids, test_sample_ids)
 
     # Incremental exams
-    with open(common_para['path']['data_set_incremental_ids_file'], 'r') as f:
-        data_set_ids = json.load(f)
-    training_sample_ids = data_set_ids['training_set']
-    test_sample_ids = data_set_ids['test_set']
-    incremental_sample_ids = data_set_ids['incremental_set']
-    incremental_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, incremental_sample_ids, random_seed)
+    # with open(common_para['path']['data_set_incremental_ids_file'], 'r') as f:
+    #     data_set_ids = json.load(f)
+    # training_sample_ids = data_set_ids['training_set']
+    # test_sample_ids = data_set_ids['test_set']
+    # incremental_sample_ids = data_set_ids['incremental_set']
+    # incremental_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, incremental_sample_ids, random_seed)
 

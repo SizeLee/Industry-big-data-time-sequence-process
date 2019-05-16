@@ -12,7 +12,7 @@ class BPNN:
 
         tf_config = tf.ConfigProto()
         # tf_config.gpu_options.allow_growth = True
-        tf_config.gpu_options.per_process_gpu_memory_fraction = 0.4
+        tf_config.gpu_options.per_process_gpu_memory_fraction = 0.1
 
         self.sess = tf.Session(graph=self.graph, config=tf_config)
         self.sequence_length = fixed_length
