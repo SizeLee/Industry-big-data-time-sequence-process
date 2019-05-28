@@ -143,18 +143,29 @@ class CNN_Attention:
             test_writer = tf.summary.FileWriter(log_dir + '/sum_a/test')
 
         step_count = 0
+        b_losses = []
+        b_aces = []
+        val_aces = []
         for i in range(epoches):
             print('epoch%d:' % i)
             data_set = self._data_generator_v2(data, labels, self.sequence_length, samples_length, batch_size,
                                                train_set_sample_ids)
             for batch_data, batch_label, weight in data_set:
                 # print(weight)
-                loss, _, batch_summary = self.sess.run([self.loss, self.train_step, self.batch_summary],
+                loss, b_ac, _, batch_summary = self.sess.run([self.loss, self.accuracy, self.train_step, self.batch_summary],
                                                         feed_dict={self.input: batch_data, self.y: batch_label,
                                                                    self.learning_rate: learning_rate,
                                                                    self.weight_matrix: weight})
                 # print('step%d: %f' % (step_count, loss))
                 # print(check)
+                b_losses.append(float(loss))
+                b_aces.append(float(b_ac))
+
+                if step_count % 10 == 0:
+                    val_ac, val_loss = self._cal_accuracy_and_loss_v2(data, labels, samples_length, batch_size,
+                                                                      test_set_ids)
+                    val_aces.append(float(val_ac))
+
                 if record_flag:
                     train_writer.add_summary(batch_summary, global_step=step_count)
 
@@ -168,6 +179,10 @@ class CNN_Attention:
                 step_count += 1
             print()
             # self.sess.run(self.accuracy, feed_dict={})
+
+        cnn_a_info = {'batch_loss': b_losses, 'batch_accuracy': b_aces, 'val_accuracy': val_aces}
+        with open('./data/info/cnn_a_info.json', 'w') as f:
+            json.dump(cnn_a_info, f)
 
         if record_flag:
             accuracy = self._whole_summary_write(train_writer, step_count, data, labels, samples_length, batch_size,

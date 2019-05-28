@@ -60,10 +60,11 @@ class  Confusion_matrix_painter:
     def plot_and_save(self, y_predict, y_true, class_num, file_name, save_dir='./data/confusion_matrix'):
         labels = [i for i in range(class_num)]
         tick_marks = np.array(range(len(labels))) + 0.5
+        print(file_name)
         cm = confusion_matrix(y_true, y_predict)
 
         print(cm)
-        plt.figure(figsize=(12, 8), dpi=120)
+        plt.figure(figsize=(12, 8), dpi=360)
 
         ind_array = np.arange(len(labels))
         x, y = np.meshgrid(ind_array, ind_array)

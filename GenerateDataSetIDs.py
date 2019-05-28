@@ -7,7 +7,7 @@ def generate_data_ids(start, end, sequence_len=1, foresight_steps=0):
     real_end = end - sequence_len + 1 - foresight_steps
     sample_num = real_end - start
     sample_ids = [i for i in range(start, real_end)]
-    training_sample_ids = random.sample(sample_ids, int(0.7 * sample_num))
+    training_sample_ids = random.sample(sample_ids, int(0.96 * sample_num))
     test_sample_ids = list(set(sample_ids) - set(training_sample_ids))
     return training_sample_ids, test_sample_ids
 
@@ -27,6 +27,8 @@ def create_and_save_data_ids():
     # sample_ids = [i for i in range(sample_num)]
     # training_sample_ids = random.sample(sample_ids, int(0.7 * sample_num))
     # test_sample_ids = list(set(sample_ids) - set(training_sample_ids))
+    print(len(training_sample_ids))
+    print(len(test_sample_ids))
 
 
     with open(cp['path']['data_set_ids_file'], 'w') as f:
@@ -61,7 +63,7 @@ def create_and_save_incremental_learning_data_set_ids():
 
 if __name__ == '__main__':
     create_and_save_data_ids()
-    create_and_save_incremental_learning_data_set_ids()
+    # create_and_save_incremental_learning_data_set_ids()
     # with open('./data/label_temp.txt') as f:
     #     strs = f.read()[1:-1].split(',')
     #     print(len(strs))

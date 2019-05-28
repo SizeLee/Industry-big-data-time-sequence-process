@@ -18,11 +18,11 @@ def rnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sa
     # lstm.save_model('./model/rnn_model')
     start_time = time.time()
     model.train_v2(data['features'], data['labels'], data['samples_length'], 1, 1024, training_sample_ids,
-                   test_sample_ids, foresight_steps=0, reset_flag=True, random_seed=random_seed)
+                   test_sample_ids, foresight_steps=0, reset_flag=True, record_flag=False, random_seed=random_seed)
     end_time = time.time()
     print('cost training time %f' % (end_time - start_time))
     model.test_v2(data['features'], data['labels'], data['samples_length'], test_sample_ids)
-    model.save_model('./model/%s_model_v2' % cell_type)
+    # model.save_model('./model/%s_model_v2' % cell_type)
 
     whole_time_on_test = model.test_time(data['features'], data['labels'], data['samples_length'], test_sample_ids)
     whole_time_on_test_str = '%s time cost on predicting %d test samples: %fs\n' % (cell_type,
@@ -51,7 +51,7 @@ def cnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sa
     end_time = time.time()
     print('cost training time %f' % (end_time - start_time))
     cnn.test_v2(data['features'], data['labels'], data['samples_length'], test_sample_ids)
-    cnn.save_model('./model/cnn_model_v2')
+    # cnn.save_model('./model/cnn_model_v2')
 
     whole_time_on_test = cnn.test_time(data['features'], data['labels'], data['samples_length'], test_sample_ids)
     whole_time_on_test_str = 'cnn time cost on predicting %d test samples: %fs\n' % (len(test_sample_ids),
@@ -80,7 +80,7 @@ def atn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sa
     end_time = time.time()
     print('cost training time %f' % (end_time - start_time))
     atn.test_v2(data['features'], data['labels'], data['samples_length'], test_sample_ids)
-    atn.save_model('./model/atn_model_v2')
+    # atn.save_model('./model/atn_model_v2')
 
     whole_time_on_test = atn.test_time(data['features'], data['labels'], data['samples_length'], test_sample_ids)
     whole_time_on_test_str = 'sum_a_cnn time cost on predicting %d test samples: %fs\n' % (len(test_sample_ids),
@@ -136,11 +136,11 @@ def bpnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_s
     # bpnn.save_model('./model/bpnn_model')
     start_time = time.time()
     bpnn.train_v2(data['features'], data['labels'], data['samples_length'], 1, 1024, training_sample_ids, test_sample_ids,
-                  foresight_steps=0, reset_flag=True, record_flag=True, random_seed=random_seed)
+                  foresight_steps=0, reset_flag=True, record_flag=False, random_seed=random_seed)
     end_time = time.time()
     print('cost training time %f' % (end_time - start_time))
     bpnn.test_v2(data['features'], data['labels'], data['samples_length'], test_sample_ids)
-    bpnn.save_model('./model/bpnn_model_v2')
+    # bpnn.save_model('./model/bpnn_model_v2')
 
     whole_time_on_test = bpnn.test_time(data['features'], data['labels'], data['samples_length'], test_sample_ids)
     whole_time_on_test_str = 'bpnn time cost on predicting %d test samples: %fs\n' % (len(test_sample_ids),
@@ -198,19 +198,19 @@ if __name__ == '__main__':
     # print(type(training_sample_ids), type(test_sample_ids))
 
     time_str = ''
-    # # rnn exams
-    # # lstm
-    # tstr = rnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, 'lstm', random_seed)
-    # time_str += tstr
-    #
-    # # gru
-    # tstr = rnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, 'gru', random_seed)
-    # time_str += tstr
-    #
-    # # sru
-    # tstr = rnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, 'sru', random_seed)
-    # time_str += tstr
-    #
+    # rnn exams
+    # lstm
+    tstr = rnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, 'lstm', random_seed)
+    time_str += tstr
+
+    # gru
+    tstr = rnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, 'gru', random_seed)
+    time_str += tstr
+
+    # sru
+    tstr = rnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, 'sru', random_seed)
+    time_str += tstr
+
     # cnn exams
     tstr = cnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, random_seed)
     time_str += tstr
@@ -219,11 +219,11 @@ if __name__ == '__main__':
     tstr = atn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, random_seed)
     time_str += tstr
     #
-    # # traditional ways
-    # # BPNN exams
-    # tstr = bpnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, random_seed)
-    # time_str += tstr
-    #
+    # traditional ways
+    # BPNN exams
+    tstr = bpnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, random_seed)
+    time_str += tstr
+
     # with open('./data/time_cost.txt', 'w+') as file:
     #     file.write(time_str)
 
