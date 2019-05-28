@@ -13,7 +13,7 @@ class Incremental_CNN_Attention:
 
         tf_config = tf.ConfigProto()
         # tf_config.gpu_options.allow_growth = True
-        tf_config.gpu_options.per_process_gpu_memory_fraction = 0.4
+        tf_config.gpu_options.per_process_gpu_memory_fraction = 0.2
 
         self.sess = tf.Session(graph=self.graph, config=tf_config)
 
@@ -152,7 +152,7 @@ class Incremental_CNN_Attention:
 
         step_count = 0
         for i in range(epoches):
-            print('epoch%d:' % i)
+            # print('epoch%d:' % i)
             data_set = self._data_generator_v2(data, labels, self.sequence_length, samples_length, batch_size,
                                                train_set_sample_ids)
             for batch_data, batch_label, weight in data_set:
@@ -164,7 +164,7 @@ class Incremental_CNN_Attention:
                                                                       self.weight_matrix: weight,
                                                                       self.incremental_flag: incre_flag,
                                                                       self.incremental_input: batch_data})
-                    print('step%d: %f' % (step_count, loss))
+                    # print('step%d: %f' % (step_count, loss))
                 else:
                     loss, _, batch_summary = self.sess.run([self.loss, self.train_step, self.batch_summary],
                                                         feed_dict={self.input: batch_data, self.y: batch_label,
@@ -191,7 +191,7 @@ class Incremental_CNN_Attention:
             accuracy, loss = self._cal_accuracy_and_loss_v2(data, labels, samples_length, batch_size, train_set_sample_ids, incre_flag)
             if loss < 0.1 and accuracy > 0.96:
                 break
-            print()
+            # print()
             # self.sess.run(self.accuracy, feed_dict={})
 
         if record_flag:
@@ -202,13 +202,13 @@ class Incremental_CNN_Attention:
         else:
             accuracy, _ = self._cal_accuracy_and_loss_v2(data, labels, samples_length, batch_size, train_set_sample_ids, incre_flag)
 
-        print('accuracy on training set: %f' % accuracy)
+        # print('accuracy on training set: %f' % accuracy)
         # print(check)
 
         if record_flag:
             train_writer.close()
             test_writer.close()
-        return
+        return accuracy
 
     def _whole_summary_write(self, writer, step, data, labels, samples_length, batch_size, data_set_sample_ids, incre_flag):
         w_accuracy, w_loss = self._cal_accuracy_and_loss_v2(data, labels, samples_length, batch_size,
@@ -221,7 +221,7 @@ class Incremental_CNN_Attention:
     def test_v2(self, data, label, samples_length, test_set_sample_ids=None, batch_size=1024, incre_flag=False, data_set_name='test set'):
         accuracy = self._cal_accuracy_v2(data, label, samples_length, batch_size, test_set_sample_ids, incre_flag)
         print('accuracy on %s: %f' % (data_set_name, accuracy))
-        return
+        return accuracy
 
     def save_model(self, save_dir, global_step=None):
         with self.graph.as_default():
@@ -720,7 +720,7 @@ class Incremental_CNN_Attention:
 
         self.load_model('./model/incre_cnn_a')
 
-        # self.test_v2(data, labels, samples_length, test_set_sample_ids=test_set_ids, batch_size=1024, data_set_name='test set')
+        self.test_v2(data, labels, samples_length, test_set_sample_ids=test_set_ids, batch_size=1024, data_set_name='test set')
 
         #### origin train over
         bin_upper = np.max(data, axis=0)
@@ -738,37 +738,97 @@ class Incremental_CNN_Attention:
         origin_data = data[train_set_sample_ids + test_set_ids, :]
         origin_distribution = self._bining_gen_distribution(origin_data, bins_bound)
 
-        # new_data = data[incremental_set_ids, :]
-        # new_distribution = self._bining_gen_distribution(new_data, bins_bound)
-        # f_d = self._distribution_similarity_judge(origin_distribution, new_distribution)
+        new_data = data[incremental_set_ids, :]
+        new_distribution = self._bining_gen_distribution(new_data, bins_bound)
+        f_d = self._distribution_similarity_judge(origin_distribution, new_distribution)
         # print(f_d)
-        # print(f_d.mean())
+        print('KL difference between old set and new set')
+        print('mean:', f_d.mean())
+        print('max:', f_d.max())
+        print('min', f_d.min())
+        print('median', np.median(f_d))
         # f_d = self._distribution_similarity_judge(origin_distribution, origin_distribution)
         # print(f_d)
+        print(' ')
 
-        distribution_difference_threshold = 0.6
-        slide_window = 10000
-        slide_step = 10000
-        window_start = 0
-        incre_flag = False
-        while window_start < len(incremental_set_ids):
-            new_data_ids = incremental_set_ids[window_start: window_start+slide_window]
-            new_data = data[new_data_ids, :]
-            new_distribution = self._bining_gen_distribution(new_data, bins_bound)
-            f_d = self._distribution_similarity_judge(origin_distribution, new_distribution)
-            print(f_d.mean(), f_d.max())
-            if f_d.mean() > distribution_difference_threshold:
-                incre_flag = True
-                self.train_v2(data, labels, samples_length, 23, batch_size, new_data_ids,  None,
-                      learning_rate=learning_rate, foresight_steps=foresight_steps, reset_flag=False,
-                      record_flag=False, incre_flag=incre_flag, log_dir=log_dir, random_seed=random_seed)
-                # test_set_ids can be None when record_flag = False
-                origin_distribution = new_distribution
-            else:
-                self.test_v2(data, labels, samples_length, new_data_ids, incre_flag=incre_flag,
-                             data_set_name='1w start from %d sample' % window_start)
-            window_start += slide_step
-            print()
+        distribution_difference_thresholds = [0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+        metricses = {'mean': np.mean, 'max': np.max, 'median': np.median, 'min': np.min}
+        # metricses = {'median': np.median}
+        # distribution_difference_threshold = 0.6
+        lines = {}
+        for metrics_name in metricses:
+            metrics = metricses[metrics_name]
+            lines[metrics_name] = {}
+            for distribution_difference_threshold in distribution_difference_thresholds:
+                lines[metrics_name][distribution_difference_threshold] = {'ac': [], 'up': []}
+                self.sess.run(self.initializer)
+                self.load_model('./model/incre_cnn_a')
+                old_distribution = origin_distribution
+                print(' ')
+                print('exam of %s, %f:' % (metrics_name, distribution_difference_threshold))
+                slide_window = 10000
+                slide_step = 10000
+                window_start = 0
+                incre_flag = False
+                dis_from_update = 0
+                while window_start < len(incremental_set_ids):
+                    new_data_ids = incremental_set_ids[window_start: window_start + slide_window]
+                    new_data = data[new_data_ids, :]
+                    new_distribution = self._bining_gen_distribution(new_data, bins_bound)
+                    f_d = self._distribution_similarity_judge(old_distribution, new_distribution)
+                    # print(f_d.mean(), f_d.max())
+                    if metrics(f_d) > distribution_difference_threshold:
+                        incre_flag = True
+                        ac = self.train_v2(data, labels, samples_length, 23, batch_size, new_data_ids, None,
+                                      learning_rate=learning_rate, foresight_steps=foresight_steps, reset_flag=False,
+                                      record_flag=False, incre_flag=incre_flag, log_dir=log_dir,
+                                      random_seed=random_seed)
+                        # test_set_ids can be None when record_flag = False
+                        print('1w start from %d sample' % window_start +' training accuracy: %f' % ac)
+
+                        old_distribution = new_distribution
+                        dis_from_update = 0
+                        lines[metrics_name][distribution_difference_threshold]['ac'].append(ac)
+                        lines[metrics_name][distribution_difference_threshold]['up'].append(dis_from_update)
+                    else:
+                        dis_from_update += 1
+                        ac = self.test_v2(data, labels, samples_length, new_data_ids, incre_flag=incre_flag,
+                                     data_set_name='1w start from %d sample' % window_start)
+                        lines[metrics_name][distribution_difference_threshold]['ac'].append(ac)
+                        lines[metrics_name][distribution_difference_threshold]['up'].append(dis_from_update)
+                    window_start += slide_step
+                    print()
+                print('end exam of %s, %f:' % (metrics_name, distribution_difference_threshold))
+                print(' ')
+            print('end of %s' % metrics_name)
+
+        with open('./data/incremental_result.json', 'w') as f:
+            json.dump(lines, f)
+        # with open('./data/incremental_median_result.json', 'w') as f:
+        #     json.dump(lines, f)
+
+        # slide_window = 10000
+        # slide_step = 10000
+        # window_start = 0
+        # incre_flag = False
+        # while window_start < len(incremental_set_ids):
+        #     new_data_ids = incremental_set_ids[window_start: window_start+slide_window]
+        #     new_data = data[new_data_ids, :]
+        #     new_distribution = self._bining_gen_distribution(new_data, bins_bound)
+        #     f_d = self._distribution_similarity_judge(origin_distribution, new_distribution)
+        #     print(f_d.mean(), f_d.max())
+        #     if f_d.mean() > distribution_difference_threshold:
+        #         incre_flag = True
+        #         self.train_v2(data, labels, samples_length, 23, batch_size, new_data_ids,  None,
+        #               learning_rate=learning_rate, foresight_steps=foresight_steps, reset_flag=False,
+        #               record_flag=False, incre_flag=incre_flag, log_dir=log_dir, random_seed=random_seed)
+        #         # test_set_ids can be None when record_flag = False
+        #         origin_distribution = new_distribution
+        #     else:
+        #         self.test_v2(data, labels, samples_length, new_data_ids, incre_flag=incre_flag,
+        #                      data_set_name='1w start from %d sample' % window_start)
+        #     window_start += slide_step
+        #     print()
 
         return
 

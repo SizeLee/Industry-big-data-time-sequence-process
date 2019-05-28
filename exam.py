@@ -165,8 +165,7 @@ def knn_exams(data, training_sample_ids, test_sample_ids):
     print('knn_model test over\n')
     return
 
-
-if __name__ == '__main__':
+def exam1and2():
     common_para = configparser.ConfigParser()
     common_para.read('common_para.ini')
     sequence_fix_length = common_para['common_parameters'].getint('sequence_fix_length')
@@ -200,28 +199,34 @@ if __name__ == '__main__':
     time_str = ''
     # rnn exams
     # lstm
-    tstr = rnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, 'lstm', random_seed)
+    tstr = rnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids,
+                     'lstm', random_seed)
     time_str += tstr
 
     # gru
-    tstr = rnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, 'gru', random_seed)
+    tstr = rnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, 'gru',
+                     random_seed)
     time_str += tstr
 
     # sru
-    tstr = rnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, 'sru', random_seed)
+    tstr = rnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, 'sru',
+                     random_seed)
     time_str += tstr
 
     # cnn exams
-    tstr = cnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, random_seed)
+    tstr = cnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids,
+                     random_seed)
     time_str += tstr
     #
     # # attention net exams
-    tstr = atn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, random_seed)
+    tstr = atn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids,
+                     random_seed)
     time_str += tstr
     #
     # traditional ways
     # BPNN exams
-    tstr = bpnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, random_seed)
+    tstr = bpnn_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids,
+                      random_seed)
     time_str += tstr
 
     # with open('./data/time_cost.txt', 'w+') as file:
@@ -231,11 +236,32 @@ if __name__ == '__main__':
     # # KNN exams
     # knn_exams(data, training_sample_ids, test_sample_ids)
 
-    # Incremental exams
-    # with open(common_para['path']['data_set_incremental_ids_file'], 'r') as f:
-    #     data_set_ids = json.load(f)
-    # training_sample_ids = data_set_ids['training_set']
-    # test_sample_ids = data_set_ids['test_set']
-    # incremental_sample_ids = data_set_ids['incremental_set']
-    # incremental_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids, incremental_sample_ids, random_seed)
+def exam3():
+    common_para = configparser.ConfigParser()
+    common_para.read('common_para.ini')
+    sequence_fix_length = common_para['common_parameters'].getint('sequence_fix_length')
+    foresight_steps = common_para['common_parameters'].getint('foresight_steps')
+    class_num = common_para['common_parameters'].getint('class_num')
+    random_seed = common_para['common_parameters'].getint('random_seed')
 
+    data = np.load(common_para['path']['data_file'])
+    # print(data['features'])
+    # print(data['labels'])
+    # print(data['samples_length'])
+    # print(data['features'].shape)
+    # print(data['labels'].shape)
+    # print(data['samples_length'].shape)
+
+    # Incremental exams
+    with open(common_para['path']['data_set_incremental_ids_file'], 'r') as f:
+        data_set_ids = json.load(f)
+    training_sample_ids = data_set_ids['training_set']
+    test_sample_ids = data_set_ids['test_set']
+    incremental_sample_ids = data_set_ids['incremental_set']
+    incremental_exams(sequence_fix_length, foresight_steps, class_num, data, training_sample_ids, test_sample_ids,
+                      incremental_sample_ids, random_seed)
+
+
+if __name__ == '__main__':
+    exam1and2()
+    exam3()
